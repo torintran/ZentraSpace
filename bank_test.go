@@ -61,7 +61,7 @@ func TestStatementImportAndReview(t *testing.T) {
 
 func TestLinkPreviouslyRecordedPayment(t *testing.T) {
 	b := Book{Bank: BankAccount{BIN: "970407", Account: "123456789", Holder: "TEST"}, Invoices: []Invoice{{ID: "i", Issued: true, Total: 1000}}}
-	if err := b.post("i", "payment-1", "Thu", 300, "Chuyển khoản"); err != nil {
+	if err := b.post("i", Entry{Key: "payment-1", Kind: "Thu", Amount: 300, Note: "Chuyển khoản"}); err != nil {
 		t.Fatal(err)
 	}
 	raw := "ma_giao_dich,ngay,so_tien,noi_dung\nref-a,2026-11-20,300,NO MEMO\nref-b,2026-11-20,300,NO MEMO\n"
@@ -76,5 +76,23 @@ func TestLinkPreviouslyRecordedPayment(t *testing.T) {
 	}
 	if b.Invoices[0].Remaining() != 700 || len(b.Invoices[0].Entries) != 1 {
 		t.Fatal("linking recorded a second payment")
+	}
+	if err := b.reverse("i", "reverse-linked", "payment-1", "Nhập nhầm"); err == nil {
+		t.Fatal("reversed a reconciled payment")
+	}
+	if err := b.post("i", Entry{Key: "payment-2", Kind: "Thu", Amount: 300, Note: "Chuyển khoản"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.reverse("i", "reverse-payment-2", "payment-2", "Nhập nhầm"); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.reconcile(b.Transfers[1].ID, "i", "payment-2"); err == nil {
+		t.Fatal("matched a reversed payment")
+	}
+	if err := b.post("i", Entry{Key: "payment-3", Kind: "Thu", Amount: 300, Method: cashPayment}); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.reconcile(b.Transfers[1].ID, "i", "payment-3"); err == nil {
+		t.Fatal("matched a cash payment to a bank transfer")
 	}
 }

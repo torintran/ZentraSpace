@@ -39,6 +39,7 @@ services:
       ZS_MASTER_KEY: ${ZS_MASTER_KEY:?run scripts/init-local.ps1}
       ZS_OWNER_PASSWORD: ${ZS_OWNER_PASSWORD:?run scripts/init-local.ps1}
       ZS_METER_PASSWORD: ${ZS_METER_PASSWORD:?run scripts/init-local.ps1}
+      ZS_STAFF_ACCOUNTS: ${ZS_STAFF_ACCOUNTS:-}
       ZS_LOCAL_HTTP: ${ZS_LOCAL_HTTP:-1}
       ZS_ORIGIN: ${ZS_ORIGIN:-http://localhost:8087}
     ports:

@@ -93,7 +93,21 @@ func migrate(ctx context.Context) error {
  USING (organization = current_setting('app.organization', true))
  WITH CHECK (organization = current_setting('app.organization', true));
  REVOKE ALL ON books FROM PUBLIC;
- GRANT SELECT, INSERT, UPDATE ON books TO zentra_runtime;`)
+ GRANT SELECT, INSERT, UPDATE ON books TO zentra_runtime;
+ CREATE TABLE IF NOT EXISTS cash_receipts (
+  organization text NOT NULL REFERENCES books(organization),
+  entry_key text NOT NULL,
+  sealed bytea NOT NULL,
+  PRIMARY KEY (organization, entry_key)
+ );
+ ALTER TABLE cash_receipts ENABLE ROW LEVEL SECURITY;
+ ALTER TABLE cash_receipts FORCE ROW LEVEL SECURITY;
+ DROP POLICY IF EXISTS organization_scope ON cash_receipts;
+ CREATE POLICY organization_scope ON cash_receipts TO zentra_runtime
+ USING (organization = current_setting('app.organization', true))
+ WITH CHECK (organization = current_setting('app.organization', true));
+ REVOKE ALL ON cash_receipts FROM PUBLIC;
+ GRANT SELECT, INSERT ON cash_receipts TO zentra_runtime;`)
 	return err
 }
 

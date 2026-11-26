@@ -30,22 +30,28 @@ func TestBillingAndReplay(t *testing.T) {
 	if err := b.read("r", "2026-11", 35, 26); err == nil {
 		t.Fatal("issued reading changed")
 	}
-	if err := b.post(i.ID, "payment-1", "Thu", 500000, "Tiền mặt"); err != nil {
+	if err := b.post(i.ID, Entry{Key: "payment-1", Kind: "Thu", Amount: 500000, Note: "Tiền mặt"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := b.post(i.ID, "payment-1", "Thu", 500000, "Tiền mặt"); err != nil {
+	if err := b.post(i.ID, Entry{Key: "payment-1", Kind: "Thu", Amount: 500000, Note: "Tiền mặt"}); err != nil {
 		t.Fatal(err)
 	}
 	if i.Remaining() != 2159000 || len(i.Entries) != 1 {
 		t.Fatal(i.Remaining(), i.Entries)
 	}
-	if err := b.post(i.ID, "payment-1", "Thu", 400000, "Tiền mặt"); err == nil {
+	if err := b.post(i.ID, Entry{Key: "payment-1", Kind: "Thu", Amount: 400000, Note: "Tiền mặt"}); err == nil {
 		t.Fatal("conflicting replay")
 	}
-	if err := b.post(i.ID, "discount", "Giảm", 100000, "Điều chỉnh theo thỏa thuận"); err != nil {
+	if err := b.post(i.ID, Entry{Key: "discount", Kind: "Giảm", Amount: 100000, Note: "Điều chỉnh theo thỏa thuận"}); err != nil {
 		t.Fatal(err)
 	}
 	if i.Total != 2659000 || i.Remaining() != 2059000 {
+		t.Fatal(i.Total, i.Remaining())
+	}
+	if err := b.reverse(i.ID, "reverse-discount", "discount", "Sai khoản giảm"); err != nil {
+		t.Fatal(err)
+	}
+	if i.Total != 2659000 || i.Remaining() != 2159000 {
 		t.Fatal(i.Total, i.Remaining())
 	}
 }
@@ -60,13 +66,13 @@ func TestCatchUpAndOverpayments(t *testing.T) {
 	}
 	b.draft("2026-11")
 	i := &b.Invoices[0]
-	if err := b.post(i.ID, "unissued-1", "Thu", 1, ""); err == nil {
+	if err := b.post(i.ID, Entry{Key: "unissued-1", Kind: "Thu", Amount: 1, Note: ""}); err == nil {
 		t.Fatal("draft collected")
 	}
 	if err := b.issue(i.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := b.post(i.ID, "overpaid-1", "Thu", 1300, "Chuyển khoản"); err != nil {
+	if err := b.post(i.ID, Entry{Key: "overpaid-1", Kind: "Thu", Amount: 1300, Note: "Chuyển khoản"}); err != nil {
 		t.Fatal(err)
 	}
 	if i.Remaining() != 0 || i.Credit() != 300 {

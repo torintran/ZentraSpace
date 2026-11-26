@@ -1,0 +1,24 @@
+services:
+  web:
+    environment:
+      ZS_MOCK_BANK_SECRET: ${ZS_MOCK_BANK_SECRET:?configure the mock bank secret}
+  mock-bank:
+    image: ${COMPOSE_PROJECT_NAME:-zentraspace}-web:local
+    pull_policy: never
+    command: ["mock-bank"]
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      ZS_MOCK_BANK_SECRET: ${ZS_MOCK_BANK_SECRET:?configure the mock bank secret}
+      ZS_MOCK_BANK_ORIGIN: http://localhost:${ZS_MOCK_BANK_PORT:-8093}
+    ports:
+      - "127.0.0.1:${ZS_MOCK_BANK_PORT:-8093}:8080"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 3s
+      timeout: 3s
+      retries: 15

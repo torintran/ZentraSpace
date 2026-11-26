@@ -50,6 +50,7 @@ func (b *Book) setBank(bank BankAccount) error {
 		return errors.New("Nhập mã BIN 6 số, số tài khoản 4–19 chữ số và tên chủ tài khoản.")
 	}
 	if b.Bank.Configured() && (b.Bank.BIN != bank.BIN || b.Bank.Account != bank.Account) {
+		b.MockBankAutoMatch = false
 		for j := range b.Invites {
 			b.Invites[j].Revoked = true
 		}
@@ -184,12 +185,12 @@ func (b *Book) reconcile(transferID, invoiceID, existing string) error {
 	if existing != "" {
 		eligible := false
 		for _, e := range i.Entries {
-			if e.Key == key && e.Kind == "Thu" && e.Amount == tr.Amount {
+			if e.Key == key && e.Kind == "Thu" && e.Method != cashPayment && e.Amount == tr.Amount {
 				eligible = true
 				break
 			}
 		}
-		if !eligible {
+		if !eligible || i.Reversed(key) {
 			return errors.New("Khoản đã ghi phải là khoản thu cùng số tiền trên bảng kê này.")
 		}
 		for _, other := range b.Transfers {
@@ -197,7 +198,7 @@ func (b *Book) reconcile(transferID, invoiceID, existing string) error {
 				return errors.New("Khoản thu này đã ghép với giao dịch khác.")
 			}
 		}
-	} else if err := b.addEntry(invoiceID, key, "Thu", tr.Amount, "Chuyển khoản · "+tr.Reference); err != nil {
+	} else if err := b.addEntry(invoiceID, Entry{Key: key, Kind: "Thu", Amount: tr.Amount, Method: transferPayment, Reference: tr.Reference}); err != nil {
 		return err
 	}
 	tr.InvoiceID, tr.EntryKey = invoiceID, key

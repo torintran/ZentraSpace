@@ -2,6 +2,8 @@
 
 **26/11/2026 · Căn cứ Blueprint v3.4**
 
+**Phạm vi bàn giao là toàn bộ tính năng trong Blueprint v3.4.** Các cổng thử nghiệm dưới đây đo mức sẵn sàng đưa vào vận hành và nghiệm thu với bên ngoài. Chúng không giới hạn phạm vi phát triển. Các tích hợp cần tài khoản hoặc contract sẽ giữ trạng thái chờ kiểm tích hợp cho đến khi có môi trường phù hợp.
+
 ZentraSpace bắt đầu với chủ trọ 10–30 phòng đang dùng Excel hoặc sổ tay và gửi bảng kê qua Zalo. Đơn vị triển khai đầu tiên là một tòa, một người đại diện trả tiền mỗi phòng. Kết quả cần đạt là chủ trọ có thể tự chốt bảng kê, gửi cho người thuê, ghi nhận thu và biết phòng nào còn nợ.
 
 Đọc cùng [Blueprint v3.4](../docs/ZENTRASPACE-BLUEPRINT.md) và [backlog triển khai](todo.md). Lịch giả định hai kỹ sư toàn thời gian và một người phụ trách pilot. Thời gian chờ lịch thu, khách và nhà cung cấp tính riêng.

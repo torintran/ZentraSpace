@@ -1,0 +1,10 @@
+{
+  "name": "zentraspace-browser-tests",
+  "private": true,
+  "scripts": {
+    "test": "node tenant-flow.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1"
+  }
+}

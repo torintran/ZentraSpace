@@ -12,11 +12,12 @@ import (
 )
 
 type BankScreen struct {
-	Account              BankAccount
-	Transfers            []BankTransfer
-	Reviewed             bool
-	Next, Previous       int
-	HasNext, HasPrevious bool
+	Account                      BankAccount
+	Transfers                    []BankTransfer
+	Reviewed                     bool
+	Next, Previous               int
+	HasNext, HasPrevious         bool
+	MockAvailable, MockAutoMatch bool
 }
 type TransferReview struct {
 	Transfer  BankTransfer
@@ -26,25 +27,25 @@ type TransferReview struct {
 	Existing  []Entry
 }
 
-func (a *App) bankOwner(w http.ResponseWriter, r *http.Request) (string, bool) {
+func (a *App) bankOwner(w http.ResponseWriter, r *http.Request) (string, string, bool) {
 	s, id, ok := a.staff(w, r)
 	if !ok {
-		return "", false
+		return "", "", false
 	}
 	if s.role != "owner" {
 		http.Error(w, "Bạn không có quyền đối soát.", http.StatusForbidden)
-		return "", false
+		return "", "", false
 	}
 	csrf := hash(id + ":csrf")
 	if r.Method == http.MethodPost && subtle.ConstantTimeCompare([]byte(r.Form.Get("csrf")), []byte(csrf)) != 1 {
 		http.Error(w, "Yêu cầu không hợp lệ.", http.StatusForbidden)
-		return "", false
+		return "", "", false
 	}
-	return csrf, true
+	return s.organization, csrf, true
 }
 
 func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
-	csrf, ok := a.bankOwner(w, r)
+	org, csrf, ok := a.bankOwner(w, r)
 	if !ok {
 		return
 	}
@@ -67,8 +68,11 @@ func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
 	} else if query.Get("saved") == "review" {
 		p.Message = "Đã đối soát giao dịch."
 	}
-	err := a.store.book(r.Context(), pilotOrg, false, func(b *Book) error {
+	err := a.store.book(r.Context(), org, false, func(b *Book) error {
 		screen.Account = b.Bank
+		screen.MockAvailable = org == pilotOrg && len(a.mockBankSecret) >= 32 &&
+			b.Bank.BIN == mockBankBIN && b.Bank.Account == mockBankAccount
+		screen.MockAutoMatch = screen.MockAvailable && b.MockBankAutoMatch
 		count := 0
 		for j := len(b.Transfers) - 1; j >= 0; j-- {
 			tr := b.Transfers[j]
@@ -95,12 +99,12 @@ func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) bankReview(w http.ResponseWriter, r *http.Request) {
-	csrf, ok := a.bankOwner(w, r)
+	org, csrf, ok := a.bankOwner(w, r)
 	if !ok {
 		return
 	}
 	review := &TransferReview{}
-	err := a.store.book(r.Context(), pilotOrg, false, func(b *Book) error {
+	err := a.store.book(r.Context(), org, false, func(b *Book) error {
 		tr := b.transfer(r.PathValue("id"))
 		if tr == nil {
 			return errMissing
@@ -130,7 +134,7 @@ func (a *App) bankReview(w http.ResponseWriter, r *http.Request) {
 			}
 			review.Selected = i
 			for _, entry := range i.Entries {
-				if entry.Kind == "Thu" && entry.Amount == tr.Amount && !linked[entry.Key] {
+				if entry.Kind == "Thu" && entry.Method != cashPayment && entry.Amount == tr.Amount && !linked[entry.Key] && !i.Reversed(entry.Key) {
 					review.Existing = append(review.Existing, entry)
 				}
 			}
@@ -145,12 +149,22 @@ func (a *App) bankReview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) bankAction(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.bankOwner(w, r); !ok {
+	org, _, ok := a.bankOwner(w, r)
+	if !ok {
 		return
 	}
 	next := "/bank"
-	err := a.store.book(r.Context(), pilotOrg, true, func(b *Book) error {
+	err := a.store.book(r.Context(), org, true, func(b *Book) error {
 		switch r.PathValue("operation") {
+		case "mock-settings":
+			if org != pilotOrg || len(a.mockBankSecret) < 32 || b.Bank.BIN != mockBankBIN || b.Bank.Account != mockBankAccount {
+				return errMissing
+			}
+			mode := r.Form.Get("mode")
+			if mode != "auto" && mode != "manual" {
+				return errInvalid
+			}
+			b.MockBankAutoMatch = mode == "auto"
 		case "account":
 			if r.Form.Get("confirm") != "yes" {
 				return errInvalid
@@ -194,14 +208,18 @@ func (a *App) bankAction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) sharedBill(r *http.Request) (*Invoice, BankAccount, error) {
-	id := r.PathValue("id")
+	route := r.PathValue("id")
 	s, _ := a.getSession(r, "zs_reader")
-	if s.role != "share:"+id {
+	if s.role != "share:"+route {
+		return nil, BankAccount{}, nil
+	}
+	org, id, ok := a.store.shareTarget(route)
+	if !ok || org != s.organization {
 		return nil, BankAccount{}, nil
 	}
 	var invoice *Invoice
 	var bank BankAccount
-	err := a.store.book(r.Context(), pilotOrg, false, func(b *Book) error {
+	err := a.store.book(r.Context(), org, false, func(b *Book) error {
 		v := b.invite(id)
 		if v != nil && !v.Revoked && v.Used && time.Now().Before(v.Expires) {
 			invoice = b.invoice(v.InvoiceID)

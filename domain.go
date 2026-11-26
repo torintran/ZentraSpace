@@ -22,6 +22,10 @@ type Reading struct {
 }
 type Invoice struct {
 	ID, RoomID, RoomName, Period                                      string
+	LeaseEffective, LeaseTenant                                       string
+	DueDate, CommonFeeLabel                                           string
+	CommonFee                                                         int64
+	RoomFees                                                          []FeeLine `json:",omitempty"`
 	Rent, ElectricRate, WaterRate, ElectricAmount, WaterAmount, Total int64
 	Reading                                                           Reading
 	Issued                                                            bool
@@ -32,7 +36,26 @@ type Entry struct {
 	Key, Kind, Note string
 	Amount          int64
 	Date            time.Time
+	Reverses        string `json:",omitempty"`
+	Method          string `json:",omitempty"`
+	Reference       string `json:",omitempty"`
 }
+
+const (
+	cashPayment     = "cash"
+	transferPayment = "transfer"
+)
+
+func (e Entry) MethodLabel() string {
+	switch e.Method {
+	case cashPayment:
+		return "Tiền mặt"
+	case transferPayment:
+		return "Chuyển khoản"
+	}
+	return ""
+}
+
 type Invite struct {
 	ID, InvoiceID, CodeHash string
 	Expires                 time.Time
@@ -40,12 +63,17 @@ type Invite struct {
 	Used, Revoked           bool
 }
 type Book struct {
-	Rooms     []Room
-	Readings  []Reading
-	Invoices  []Invoice
-	Invites   []Invite
-	Bank      BankAccount
-	Transfers []BankTransfer
+	CashEntries       []CashEntry
+	Rooms             []Room
+	RoomFees          []RoomFee
+	Leases            []LeaseTerms
+	Billing           map[string]BillingSettings
+	Readings          []Reading
+	Invoices          []Invoice
+	Invites           []Invite
+	Bank              BankAccount
+	MockBankAutoMatch bool
+	Transfers         []BankTransfer
 }
 
 var (
@@ -94,6 +122,58 @@ func (b *Book) room(id string) *Room {
 	for i := range b.Rooms {
 		if b.Rooms[i].ID == id {
 			return &b.Rooms[i]
+		}
+	}
+	return nil
+}
+
+func (r Room) Revision() string {
+	return hash(fmt.Sprintf("%q %q %q %q %d %d %d %d %d", r.ID, r.Name, r.Tenant,
+		r.Start, r.Rent, r.ElectricRate, r.WaterRate, r.Electric, r.Water))
+}
+
+func (b *Book) roomLocks(id string) (hasReading, hasIssued bool) {
+	for _, r := range b.Readings {
+		if r.RoomID == id {
+			hasReading = true
+			break
+		}
+	}
+	for _, i := range b.Invoices {
+		if i.RoomID == id && i.Issued {
+			hasIssued = true
+			break
+		}
+	}
+	return
+}
+
+func (b *Book) saveRoom(room Room, revision string) error {
+	for _, existing := range b.Rooms {
+		if existing.ID != room.ID && strings.EqualFold(existing.Name, room.Name) {
+			return errors.New("Mã phòng đã tồn tại.")
+		}
+	}
+	if room.ID == "" {
+		if len(b.Rooms) >= 150 {
+			return errors.New("Bản thử hỗ trợ tối đa 150 phòng.")
+		}
+		room.ID = token()
+		b.Rooms = append(b.Rooms, room)
+		return nil
+	}
+	current := b.room(room.ID)
+	if current == nil {
+		return errMissing
+	}
+	if current.Revision() != revision {
+		return errors.New("Thông tin phòng đã thay đổi. Hãy mở lại phòng trước khi lưu.")
+	}
+	*current = room
+	for j := range b.Invoices {
+		i := &b.Invoices[j]
+		if i.RoomID == room.ID && !i.Issued {
+			*i = b.calculateInvoice(room, i.Reading, i.ID)
 		}
 	}
 	return nil
@@ -166,7 +246,7 @@ func (b *Book) read(id, period string, electric, water int64) error {
 	for j := range b.Invoices {
 		i := &b.Invoices[j]
 		if i.RoomID == id && i.Period == period && !i.Issued {
-			*i = calculate(*room, r, i.ID)
+			*i = b.calculateInvoice(*room, r, i.ID)
 		}
 	}
 	return nil
@@ -198,7 +278,7 @@ func (b *Book) draft(period string) int {
 			}
 		}
 		if !exists {
-			b.Invoices = append(b.Invoices, calculate(r, *reading, token()))
+			b.Invoices = append(b.Invoices, b.calculateInvoice(r, *reading, token()))
 			n++
 		}
 	}
@@ -217,15 +297,28 @@ func (b *Book) issue(id string) error {
 	return nil
 }
 
+func (i Invoice) Revision() string {
+	return hash(fmt.Sprintf("%q %q %q %q %q %q %q %q %d %d %d %d %d %d %d %d %d %d %d %#v",
+		i.ID, i.RoomID, i.RoomName, i.Period, i.LeaseEffective, i.LeaseTenant, i.DueDate, i.CommonFeeLabel,
+		i.CommonFee, i.Rent, i.ElectricRate, i.WaterRate,
+		i.ElectricAmount, i.WaterAmount, i.Total, i.Reading.ElectricBefore,
+		i.Reading.ElectricAfter, i.Reading.WaterBefore, i.Reading.WaterAfter, i.RoomFees))
+}
+
+func (i Invoice) NetCollected() int64 { collected, _ := i.totals(); return collected }
+func (i Invoice) NetReduction() int64 { _, reduced := i.totals(); return reduced }
+
 func (i Invoice) totals() (collected, reduced int64) {
 	for _, e := range i.Entries {
 		switch e.Kind {
 		case "Thu":
 			collected += e.Amount
-		case "Hoàn":
+		case "Hoàn", "Đảo thu":
 			collected -= e.Amount
 		case "Giảm":
 			reduced += e.Amount
+		case "Đảo giảm":
+			reduced -= e.Amount
 		}
 	}
 	return
@@ -233,46 +326,106 @@ func (i Invoice) totals() (collected, reduced int64) {
 func (i Invoice) Remaining() int64 { c, d := i.totals(); return max(0, i.Total-d-c) }
 func (i Invoice) Credit() int64    { c, d := i.totals(); return max(0, c-(i.Total-d)) }
 
-func (b *Book) post(id, key, kind string, amount int64, note string) error {
-	if strings.HasPrefix(key, "bank-") {
-		return errInvalid
+func (i Invoice) Reversed(key string) bool {
+	for _, e := range i.Entries {
+		if e.Reverses == key {
+			return true
+		}
 	}
-	return b.addEntry(id, key, kind, amount, note)
+	return false
 }
 
-func (b *Book) addEntry(id, key, kind string, amount int64, note string) error {
+func (b *Book) reverse(id, key, original, note string) error {
 	i := b.invoice(id)
 	if i == nil {
 		return errMissing
 	}
-	if !i.Issued || len(key) < 8 || len(key) > 80 || amount <= 0 || amount > 100000000000 || len(note) > 240 {
+	if !i.Issued || len(key) < 8 || len(key) > 80 || strings.HasPrefix(key, "bank-") || original == "" || note == "" || len(note) > 240 {
+		return errInvalid
+	}
+	var source Entry
+	for _, e := range i.Entries {
+		if e.Key == key {
+			if e.Reverses == original && e.Note == note {
+				return nil
+			}
+			return errors.New("Thao tác đã được ghi với thông tin khác.")
+		}
+		if e.Key == original {
+			source = e
+		}
+	}
+	if i.Reversed(original) {
+		return errors.New("Bút toán này đã được đảo.")
+	}
+	collected, _ := i.totals()
+	var kind string
+	switch source.Kind {
+	case "Thu":
+		for _, tr := range b.Transfers {
+			if tr.InvoiceID == id && tr.EntryKey == original {
+				return errors.New("Khoản thu đã đối soát với sao kê. Hãy kiểm tra giao dịch ngân hàng trước khi điều chỉnh.")
+			}
+		}
+		if source.Amount > collected {
+			return errors.New("Không thể đảo toàn bộ khoản thu vì số đã thu ròng thấp hơn khoản gốc.")
+		}
+		kind = "Đảo thu"
+	case "Giảm":
+		kind = "Đảo giảm"
+	default:
+		return errInvalid
+	}
+	i.Entries = append(i.Entries, Entry{Key: key, Kind: kind, Amount: source.Amount, Note: note, Date: time.Now().UTC(), Reverses: original})
+	return nil
+}
+
+func (b *Book) post(id string, entry Entry) error {
+	if strings.HasPrefix(entry.Key, "bank-") {
+		return errInvalid
+	}
+	return b.addEntry(id, entry)
+}
+
+func (b *Book) addEntry(id string, entry Entry) error {
+	i := b.invoice(id)
+	if i == nil {
+		return errMissing
+	}
+	if !i.Issued || len(entry.Key) < 8 || len(entry.Key) > 80 || entry.Amount <= 0 || entry.Amount > 100000000000 ||
+		len(entry.Note) > 240 || len(entry.Reference) > 160 || entry.Reverses != "" {
+		return errInvalid
+	}
+	if entry.Method != "" && (entry.Kind != "Thu" || (entry.Method != cashPayment && entry.Method != transferPayment)) {
 		return errInvalid
 	}
 	for _, e := range i.Entries {
-		if e.Key == key {
-			if e.Kind == kind && e.Amount == amount && e.Note == note {
+		if e.Key == entry.Key {
+			entry.Date = e.Date
+			if e == entry {
 				return nil
 			}
 			return errors.New("Thao tác đã được ghi với thông tin khác.")
 		}
 	}
 	collected, reduced := i.totals()
-	switch kind {
+	switch entry.Kind {
 	case "Thu":
-		if collected+amount > 1000000000000 {
+		if collected+entry.Amount > 1000000000000 {
 			return errInvalid
 		}
 	case "Giảm":
-		if note == "" || amount > i.Total-reduced {
+		if entry.Note == "" || entry.Amount > i.Total-reduced {
 			return errInvalid
 		}
 	case "Hoàn":
-		if note == "" || amount > collected {
+		if entry.Note == "" || entry.Amount > collected {
 			return errInvalid
 		}
 	default:
 		return errInvalid
 	}
-	i.Entries = append(i.Entries, Entry{Key: key, Kind: kind, Amount: amount, Note: note, Date: time.Now().UTC()})
+	entry.Date = time.Now().UTC()
+	i.Entries = append(i.Entries, entry)
 	return nil
 }

@@ -18,11 +18,11 @@ func TestBrowserFormOriginAndReferrerPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := &App{
-		origin:    origin,
-		pages:     template.Must(template.New("app.html").Parse("login form")),
-		passwords: map[string][]byte{"owner": password},
-		sessions:  map[string]session{},
-		limits:    map[string]limiter{},
+		origin:   origin,
+		pages:    template.Must(template.New("app.html").Parse("login form")),
+		accounts: map[string]staffLogin{"owner": {pilotOrg, "owner", password}},
+		sessions: map[string]session{},
+		limits:   map[string]limiter{},
 	}
 	handler := app.routes()
 

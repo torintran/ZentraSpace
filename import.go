@@ -13,13 +13,15 @@ type ImportPreview struct {
 	Add, Skip    int
 }
 
+const roomCSVHeader = "phong,nguoi_dai_dien,tien_thue,gia_dien,gia_nuoc,dien_dau,nuoc_dau"
+
 func (b *Book) importRooms(period, data string, commit bool) (ImportPreview, error) {
 	p := ImportPreview{Period: period, Data: data}
 	source := csv.NewReader(strings.NewReader(strings.TrimPrefix(data, "\ufeff")))
 	source.FieldsPerRecord = 7
 	source.TrimLeadingSpace = true
 	header, err := source.Read()
-	if err != nil || strings.Join(header, ",") != "phong,nguoi_dai_dien,tien_thue,gia_dien,gia_nuoc,dien_dau,nuoc_dau" {
+	if err != nil || strings.Join(header, ",") != roomCSVHeader {
 		return p, fmt.Errorf("Dòng đầu cần theo đúng mẫu CSV.")
 	}
 	var additions []Room

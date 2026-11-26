@@ -3,3 +3,4 @@
 .env.*
 docs
 tasks
+tests/browser/node_modules

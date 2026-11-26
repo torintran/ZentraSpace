@@ -1,6 +1,6 @@
+param([string]$Path = (Join-Path (Split-Path $PSScriptRoot -Parent) '.env'))
 $ErrorActionPreference = 'Stop'
-$path = Join-Path (Split-Path $PSScriptRoot -Parent) '.env'
-if (Test-Path -LiteralPath $path) { Write-Output 'Local configuration already exists.'; exit 0 }
+if (Test-Path -LiteralPath $Path) { Write-Output 'Local configuration already exists.'; return }
 function New-Secret {
   $bytes = New-Object byte[] 32
   $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
