@@ -1,0 +1,55 @@
+name: zentraspace
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: zentraspace
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?run scripts/init-local.ps1}
+    volumes:
+      - data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d zentraspace"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  migrate:
+    image: ${COMPOSE_PROJECT_NAME:-zentraspace}-web:local
+    build: .
+    command: ["migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD}
+      DB_RUNTIME_PASSWORD: ${DB_RUNTIME_PASSWORD:?run scripts/init-local.ps1}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+  web:
+    image: ${COMPOSE_PROJECT_NAME:-zentraspace}-web:local
+    pull_policy: never
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DB_HOST: db
+      DB_RUNTIME_PASSWORD: ${DB_RUNTIME_PASSWORD:?run scripts/init-local.ps1}
+      ZS_MASTER_KEY: ${ZS_MASTER_KEY:?run scripts/init-local.ps1}
+      ZS_OWNER_PASSWORD: ${ZS_OWNER_PASSWORD:?run scripts/init-local.ps1}
+      ZS_METER_PASSWORD: ${ZS_METER_PASSWORD:?run scripts/init-local.ps1}
+      ZS_LOCAL_HTTP: ${ZS_LOCAL_HTTP:-1}
+      ZS_ORIGIN: ${ZS_ORIGIN:-http://localhost:8087}
+    ports:
+      - "127.0.0.1:${ZS_PORT:-8087}:8080"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+volumes:
+  data:

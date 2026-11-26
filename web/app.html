@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{if eq .Screen "verify"}}Xem bảng kê riêng{{else}}ZentraSpace{{end}}</title>
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/app.css">
+<script defer src="/assets/app.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Đến nội dung</a>
+<header class="bar"><div class="bar-inner">
+<a class="brand" href="/" aria-label="ZentraSpace"><img src="/assets/icon.svg" alt="" width="37" height="37"><span>Zentra<span class="accent">Space</span></span></a>
+{{if .Role}}
+<form action="/action/logout" method="post"><input type="hidden" name="csrf" value="{{.CSRF}}"><button type="submit" class="secondary small">Đăng xuất</button></form>
+{{end}}
+</div></header>
+<main id="main" class="{{if or (eq .Screen "home") (eq .Screen "invoice") (eq .Screen "bank")}}layout{{else}}layout narrow{{end}}">
+{{if .Error}}<p class="notice error" role="alert">{{.Error}}</p>{{end}}
+{{if .Message}}<p class="notice" role="status">{{.Message}}</p>{{end}}
+
+{{if eq .Screen "login"}}
+<section class="card auth">
+<h1>Đăng nhập</h1>
+<p class="subtle">Quản lý phòng và các kỳ thu của bạn.</p>
+<form method="post" action="/login" class="form">
+<label>Tài khoản<select name="account"><option value="owner">Chủ trọ</option><option value="meter">Nhân viên công tơ</option></select></label>
+<label>Mật khẩu<input name="password" type="password" autocomplete="current-password" maxlength="72" required></label>
+<button>Đăng nhập</button>
+</form>
+</section>
+{{else if eq .Screen "error"}}
+<div class="card"><a class="button secondary" href="/">Về trang quản lý</a></div>
+{{else if eq .Screen "home"}}
+<div class="page-title">
+<div><p class="eyebrow">QUẢN LÝ NHÀ TRỌ</p><h1>{{if eq .Tab "meters"}}Nhập điện nước{{else if eq .Tab "rooms"}}Phòng và hợp đồng{{else}}Chốt kỳ thu{{end}}</h1></div>
+<form method="get" action="/" class="period"><input type="hidden" name="tab" value="{{.Tab}}"><label>Kỳ thu<input type="month" name="period" value="{{.Period}}" required></label><button class="secondary">Xem kỳ</button></form>
+</div>
+{{if eq .Role "owner"}}
+<nav class="tabs" aria-label="Quản lý kỳ thu">
+<a class="{{if eq .Tab "billing"}}active{{end}}" {{if eq .Tab "billing"}}aria-current="page"{{end}} href="/?tab=billing&amp;period={{.Period}}">Chốt kỳ thu</a>
+<a class="{{if eq .Tab "meters"}}active{{end}}" {{if eq .Tab "meters"}}aria-current="page"{{end}} href="/?tab=meters&amp;period={{.Period}}">Nhập điện nước</a>
+<a class="{{if eq .Tab "rooms"}}active{{end}}" {{if eq .Tab "rooms"}}aria-current="page"{{end}} href="/?tab=rooms&amp;period={{.Period}}">Phòng và hợp đồng</a>
+<a href="/bank">Đối soát ngân hàng</a>
+</nav>
+{{end}}
+{{if eq .Tab "rooms"}}
+<div class="columns">
+<section class="card">
+<h2>Thêm phòng và hợp đồng</h2>
+<p class="subtle">Kỳ đầu tiên của hợp đồng là <strong>{{.Period}}</strong>. Nhập đơn giá đã được xác nhận.</p>
+<form method="post" action="/action/room" class="form">
+<input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="period" value="{{.Period}}">
+<label>Mã phòng<input name="name" placeholder="VD: P101" maxlength="40" required></label>
+<label>Người đại diện <span class="subtle">(không bắt buộc)</span><input name="tenant" maxlength="100"></label>
+<label>Tiền thuê mỗi tháng (đồng)<input name="rent" type="number" inputmode="numeric" min="0" max="100000000" required></label>
+<div class="pair">
+<label>Giá điện (đồng/kWh)<input name="electricRate" type="number" inputmode="numeric" min="0" max="100000" required></label>
+<label>Giá nước (đồng/m³)<input name="waterRate" type="number" inputmode="numeric" min="0" max="1000000" required></label>
+<label>Chỉ số điện đầu kỳ<input name="electric" type="number" inputmode="numeric" min="0" max="999999" value="0" required></label>
+<label>Chỉ số nước đầu kỳ<input name="water" type="number" inputmode="numeric" min="0" max="999999" value="0" required></label>
+</div>
+<button>Lưu phòng</button>
+</form>
+</section>
+<section class="card"><h2>Danh sách phòng</h2>
+{{if .Rooms}}<label>Tìm theo mã phòng<input type="search" data-room-search></label>{{end}}
+{{range .Rooms}}<article class="list-row" data-room="{{.Name}}"><div><strong>{{.Name}}</strong>{{if .Tenant}}<p>{{.Tenant}}</p>{{end}}</div><span class="badge">Từ {{.Start}}</span></article>
+{{else}}<p class="subtle">Chưa có phòng. Hãy thêm phòng đầu tiên.</p>{{end}}
+<hr>
+<details>
+<summary>Nhập danh sách CSV</summary>
+<p class="subtle">Dán CSV có hàng tiêu đề theo mẫu bên dưới. Kỳ đầu của các phòng được nhập là {{.Period}}.</p>
+<form method="post" action="/action/import-preview" class="form">
+<input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="period" value="{{.Period}}">
+<label>Nội dung CSV<textarea name="csv" rows="4" spellcheck="false" required>phong,nguoi_dai_dien,tien_thue,gia_dien,gia_nuoc,dien_dau,nuoc_dau</textarea></label>
+<button class="secondary">Kiểm tra danh sách</button>
+</form>
+</details>
+</section></div>
+{{else if eq .Tab "meters"}}
+<section class="card">
+<h2>Chỉ số cuối kỳ {{.Period}}</h2>
+<p class="subtle">Kiểm tra số trên công tơ, rồi lưu theo từng phòng.</p>
+{{range .Rooms}}
+<form class="meter-row" method="post" action="/action/read">
+<input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="period" value="{{$.Period}}"><input type="hidden" name="id" value="{{.ID}}">
+<div><strong>{{.Name}}</strong> {{if .Done}}<span class="badge good">Đã lưu</span>{{else}}<span class="badge">Chưa nhập</span>{{end}}</div>
+<label>Điện (kWh)<input type="number" name="electric" inputmode="numeric" min="0" max="999999" value="{{if .Done}}{{.Electric}}{{end}}" placeholder="{{.Electric}}" required></label>
+<label>Nước (m³)<input type="number" name="water" inputmode="numeric" min="0" max="999999" value="{{if .Done}}{{.Water}}{{end}}" placeholder="{{.Water}}" required></label>
+<button>Lưu chỉ số</button>
+</form>
+{{else}}<p class="subtle">Chưa có phòng để nhập chỉ số.</p>{{end}}
+</section>
+{{else}}
+<div class="columns">
+<section class="card">
+<h2>Bảng kê kỳ {{.Period}}</h2>
+<p class="subtle">Tạo bản nháp cho phòng đã chốt điện nước.</p>
+<div class="actions">
+<form method="post" action="/action/draft"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="period" value="{{.Period}}"><button>Tạo bảng kê nháp</button></form>
+<a class="button secondary" href="/export?period={{.Period}}">Xuất công nợ</a>
+</div>
+{{range .Invoices}}
+<article class="list-row"><div><strong>{{.RoomName}}</strong><p>{{if not .Issued}}Bản nháp{{else if .Remaining}}Còn phải thu{{else}}Đã thu đủ{{end}}</p></div><a class="button secondary" href="/invoice/{{.ID}}">Xem bảng kê</a></article>
+{{else}}<div class="empty">Chưa có bảng kê cho kỳ này.</div>{{end}}
+</section>
+<section class="card"><h2>Chuẩn bị kỳ thu</h2>
+{{range .Rooms}}<div class="list-row"><strong>{{.Name}}</strong><span class="badge {{if .Done}}good{{end}}">{{if .Done}}Có chỉ số{{else}}Thiếu chỉ số{{end}}</span></div>
+{{else}}<p class="subtle">Thêm một phòng để bắt đầu kỳ thu.</p><a class="button secondary" href="/?tab=rooms&amp;period={{.Period}}">Thêm phòng</a>{{end}}
+</section>
+</div>
+{{end}}
+
+{{else if eq .Screen "bank"}}
+<a class="back" href="/">← Về kỳ thu</a>
+<div class="page-title"><div><p class="eyebrow">THU TIỀN</p><h1>Đối soát ngân hàng</h1></div></div>
+<div class="columns">
+<section class="card">
+<h2>Giao dịch tiền vào</h2>
+<nav class="tabs" aria-label="Trạng thái đối soát">
+<a class="{{if not .Bank.Reviewed}}active{{end}}" href="/bank">Chờ duyệt</a>
+<a class="{{if .Bank.Reviewed}}active{{end}}" href="/bank?status=reviewed">Đã đối soát</a>
+</nav>
+{{range .Bank.Transfers}}
+<article class="list-row"><div><strong>{{money .Amount}}</strong><p>{{.Date}} · {{.Reference}} · TK …{{.AccountSuffix}}</p>{{if .Memo}}<p>{{.Memo}}</p>{{end}}</div>
+<a class="button secondary" href="/bank/review/{{.ID}}">{{if .InvoiceID}}Xem đối soát{{else}}Duyệt giao dịch{{end}}</a></article>
+{{else}}<p class="empty">Chưa có giao dịch trong mục này.</p>{{end}}
+{{if or .Bank.HasPrevious .Bank.HasNext}}<nav class="actions" aria-label="Trang giao dịch">
+{{if .Bank.HasPrevious}}<a class="button secondary" href="/bank?offset={{.Bank.Previous}}{{if .Bank.Reviewed}}&amp;status=reviewed{{end}}">Trang trước</a>{{end}}
+{{if .Bank.HasNext}}<a class="button secondary" href="/bank?offset={{.Bank.Next}}{{if .Bank.Reviewed}}&amp;status=reviewed{{end}}">Trang sau</a>{{end}}
+</nav>{{end}}
+</section>
+<section class="card">
+<h2>Tài khoản nhận tiền</h2>
+{{if .Bank.Account.Configured}}<p class="notice">Đang dùng tài khoản ••••{{.Bank.Account.Suffix}} · BIN {{.Bank.Account.BIN}}</p>{{else}}<p class="subtle">Lưu tài khoản để người thuê có thể xem VietQR sau khi xác minh bảng kê.</p>{{end}}
+<details {{if not .Bank.Account.Configured}}open{{end}}>
+<summary>{{if .Bank.Account.Configured}}Đổi tài khoản{{else}}Nhập thông tin tài khoản{{end}}</summary>
+<form method="post" action="/bank/account" class="form">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<label>Mã BIN ngân hàng (6 số)<input type="text" name="bin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></label>
+<label>Số tài khoản nhận<input type="text" name="account" inputmode="numeric" pattern="[0-9]{4,19}" maxlength="19" required></label>
+<label>Tên chủ tài khoản<input name="holder" maxlength="80" required></label>
+{{if .Bank.Account.Configured}}<p class="subtle">Đổi ngân hàng hoặc số tài khoản sẽ thu hồi các link xem cũ. Hãy gửi link mới sau khi kiểm tra tài khoản.</p>{{end}}
+<label class="check"><input type="checkbox" name="confirm" value="yes" required> Tôi đã kiểm tra tài khoản nhận.</label>
+<button>Lưu tài khoản</button>
+</form>
+</details>
+{{if .Bank.Account.Configured}}
+<hr>
+<h2>Nhập sao kê CSV</h2>
+<p class="subtle">Dùng giao dịch tiền vào của tài khoản đang chọn. Ngày dạng YYYY-MM-DD, số tiền nguyên dương. Mỗi dòng cần mã giao dịch ngân hàng.</p>
+<form method="post" action="/bank/import" class="form">
+<input type="hidden" name="csrf" value="{{.CSRF}}">
+<label>Nội dung CSV<textarea name="csv" rows="4" spellcheck="false" required>ma_giao_dich,ngay,so_tien,noi_dung</textarea></label>
+<button class="secondary">Thêm vào hàng chờ</button>
+</form>
+{{end}}
+</section></div>
+{{else if eq .Screen "bank-review"}}
+<a class="back" href="/bank">← Về đối soát</a>
+<section class="card auth">
+<h1>Duyệt giao dịch</h1>
+<p><strong>{{money .BankReview.Transfer.Amount}}</strong> · {{.BankReview.Transfer.Date}} · {{.BankReview.Transfer.Reference}}</p>
+{{if .BankReview.Transfer.Memo}}<p class="subtle">{{.BankReview.Transfer.Memo}}</p>{{end}}
+{{if .BankReview.Transfer.InvoiceID}}
+<p class="notice">Giao dịch đã được đối soát.</p>
+<a class="button secondary" href="/invoice/{{.BankReview.Transfer.InvoiceID}}">Xem bảng kê</a>
+{{else}}
+{{if .BankReview.Suggested}}<p class="notice">Mã chuyển khoản gợi ý phòng {{.BankReview.Suggested.RoomName}} · kỳ {{.BankReview.Suggested.Period}}.</p>{{else}}<p class="subtle">Chưa có mã đủ rõ. Hãy kiểm tra sao kê rồi chọn bảng kê.</p>{{end}}
+<form method="get" action="/bank/review/{{.BankReview.Transfer.ID}}" class="form">
+<label>Bảng kê đã phát hành<select name="invoice" required><option value="">Chọn phòng và kỳ</option>
+{{range .BankReview.Invoices}}<option value="{{.ID}}" {{if $.BankReview.Selected}}{{if eq .ID $.BankReview.Selected.ID}}selected{{end}}{{end}}>{{.RoomName}} · {{.Period}} · còn {{money .Remaining}}</option>{{end}}
+</select></label><button class="secondary">Kiểm tra bảng kê</button>
+</form>
+{{with .BankReview.Selected}}
+<hr>
+<p>Phòng <strong>{{.RoomName}}</strong> · Kỳ {{.Period}} · Còn {{money .Remaining}}</p>
+{{if gt $.BankReview.Transfer.Amount .Remaining}}<p class="notice">Nếu ghi khoản thu mới, phần vượt công nợ sẽ được ghi nhận là thu dư.</p>{{end}}
+<form method="post" action="/bank/approve/{{$.BankReview.Transfer.ID}}" class="form">
+<input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="invoice" value="{{.ID}}">
+<label>Cách ghi nhận<select name="existing" required>
+<option value="">Chọn cách ghi</option>
+<option value="new">Ghi một khoản thu mới</option>
+{{range $.BankReview.Existing}}<option value="{{.Key}}">Ghép khoản đã ghi · {{clock .Date}} · {{.Note}}</option>{{end}}
+</select></label>
+<label class="check"><input type="checkbox" name="confirm" value="yes" required> Tôi đã kiểm tra bảng kê và khoản thu.</label>
+<button>Xác nhận đối soát</button>
+</form>
+{{end}}
+{{end}}
+</section>
+{{else if eq .Screen "invoice"}}
+<a class="back" href="/?period={{.Invoice.Period}}">← Về kỳ thu</a>
+<div class="page-title"><div><p class="eyebrow">PHÒNG {{.Invoice.RoomName}}</p><h1>Bảng kê tiền thuê</h1><p class="subtle">Kỳ {{.Invoice.Period}}</p></div><span class="badge {{if .Invoice.Issued}}good{{end}}">{{if .Invoice.Issued}}Đã phát hành{{else}}Bản nháp{{end}}</span></div>
+<div class="columns">
+<section class="card">{{template "details" .Invoice}}</section>
+<section class="card">
+{{if .Invoice.Issued}}
+<h2>Ghi nhận giao dịch</h2>
+<form method="post" action="/action/post" class="form">
+<input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="id" value="{{.Invoice.ID}}"><input type="hidden" name="key" value="{{key}}">
+<label>Loại giao dịch<select name="kind"><option>Thu</option><option>Giảm</option><option>Hoàn</option></select></label>
+<label>Số tiền (đồng)<input type="number" min="1" max="100000000000" inputmode="numeric" name="amount" required></label>
+<label>Phương thức hoặc lý do<input name="note" maxlength="150" placeholder="VD: Tiền mặt hoặc chuyển khoản"></label>
+<button>Ghi giao dịch</button>
+</form>
+<hr>
+<h2>Gửi bảng kê riêng</h2>
+{{if .Invoice.PaymentCode}}<p class="subtle">Mã đối soát <strong>{{.Invoice.PaymentCode}}</strong></p>{{end}}
+<p class="subtle">Tạo link để gửi qua Zalo. Trao mã dùng một lần qua kênh liên hệ riêng đã xác nhận với người thuê.</p>
+<form method="post" action="/action/invite"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="id" value="{{.Invoice.ID}}"><button class="secondary">Tạo link mới</button></form>
+{{range .Invites}}<form method="post" action="/action/revoke" class="revoke"><input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="id" value="{{.ID}}"><button class="secondary">Thu hồi link hiện tại</button> <small>Hết hạn {{clock .Expires}}</small></form>{{end}}
+{{else}}
+<h2>Duyệt bảng kê</h2>
+<p class="subtle">Kiểm tra tiền thuê và cách tính điện nước. Sau khi phát hành, thay đổi được ghi thành giao dịch điều chỉnh.</p>
+<form method="post" action="/action/issue"><input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="id" value="{{.Invoice.ID}}"><button>Phát hành bảng kê</button></form>
+{{end}}
+</section></div>
+{{if .Invoice.Entries}}
+<section class="card history"><h2>Lịch sử giao dịch</h2>
+{{range .Invoice.Entries}}<div class="list-row"><div><strong>{{.Kind}}</strong><p>{{clock .Date}} {{if .Note}} · {{.Note}}{{end}}</p></div><strong>{{money .Amount}}</strong></div>{{end}}
+</section>{{end}}
+
+{{else if eq .Screen "import"}}
+<section class="card auth"><h1>Kiểm tra danh sách</h1>
+<p>Kỳ đầu {{.Import.Period}}. Thêm {{.Import.Add}} phòng mới. Bỏ qua {{.Import.Skip}} dòng đã có.</p>
+<form method="post" action="/action/import" class="form">
+<input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="period" value="{{.Import.Period}}">
+<label>Danh sách đã kiểm tra<textarea name="csv" rows="6" readonly>{{.Import.Data}}</textarea></label>
+<button>Lưu danh sách phòng</button>
+</form>
+<a class="back" href="/?tab=rooms&amp;period={{.Import.Period}}">Về danh sách phòng</a>
+</section>
+{{else if eq .Screen "invite"}}
+<a class="back" href="/invoice/{{.Invoice.ID}}">← Về bảng kê</a>
+<section class="card auth">
+<h1>Gửi bảng kê riêng</h1>
+<label for="share-message">Lời nhắc để gửi qua Zalo</label>
+<textarea id="share-message" readonly rows="3">Bạn có bảng kê mới. Mở đường dẫn và xác minh để xem: {{.ShareURL}}</textarea>
+<button type="button" class="secondary" data-copy="share-message">Sao chép lời nhắc</button>
+<p id="copy-status" role="status"></p>
+<div class="code"><span>Mã dùng một lần</span><strong>{{.Code}}</strong></div>
+<p class="subtle">Trao mã qua một kênh riêng, chẳng hạn cuộc gọi tới số đã xác nhận. Link và mã này hết hạn sau 24 giờ.</p>
+</section>
+{{else if eq .Screen "verify"}}
+<section class="card auth">
+<h1>Xác minh để xem bảng kê</h1>
+<p class="subtle">Nhập mã 8 chữ số người quản lý đã cung cấp riêng.</p>
+<form method="post" action="/p/{{.InviteID}}" class="form">
+<label>Mã xác minh<input name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{8}" maxlength="8" required></label>
+<button>Xem bảng kê</button>
+</form>
+</section>
+{{else if eq .Screen "shared"}}
+<section class="card auth"><p class="eyebrow">PHÒNG {{.Invoice.RoomName}} · KỲ {{.Invoice.Period}}</p><h1>Bảng kê tiền thuê</h1>{{template "details" .Invoice}}
+{{if .PaymentBank.Configured}}
+<hr><h2>Chuyển khoản bằng VietQR</h2>
+<p>Kiểm tra tên người nhận và số tiền trên ứng dụng ngân hàng trước khi chuyển.</p>
+<img class="payment-qr" src="/p/{{.InviteID}}/qr" alt="Mã VietQR cho số tiền còn phải trả" width="280" height="280">
+<dl class="charges">
+<div><dt>Chủ tài khoản</dt><dd>{{.PaymentBank.Holder}}</dd></div>
+<div><dt>Số tài khoản</dt><dd>{{.PaymentBank.Account}}</dd></div>
+<div><dt>Nội dung chuyển khoản</dt><dd>{{.Invoice.PaymentCode}}</dd></div>
+</dl>
+{{end}}
+</section>
+{{end}}
+</main>
+<footer class="layout"><span>ZentraSpace</span></footer>
+</body>
+</html>
+{{define "details"}}
+<h2>Chi tiết khoản thu</h2>
+<dl class="charges">
+<div><dt>Tiền thuê</dt><dd>{{money .Rent}}</dd></div>
+<div><dt>Điện <small>{{.Reading.ElectricBefore}} → {{.Reading.ElectricAfter}} kWh · {{money .ElectricRate}}/kWh</small></dt><dd>{{money .ElectricAmount}}</dd></div>
+<div><dt>Nước <small>{{.Reading.WaterBefore}} → {{.Reading.WaterAfter}} m³ · {{money .WaterRate}}/m³</small></dt><dd>{{money .WaterAmount}}</dd></div>
+<div><dt>Tổng bảng kê</dt><dd>{{money .Total}}</dd></div>
+{{if .Issued}}<div class="total"><dt>Còn phải trả</dt><dd>{{money  .Remaining}}</dd></div>{{if .Credit}}<div><dt>Thu dư</dt><dd>{{money  .Credit}}</dd></div>{{end}}{{end}}
+</dl>
+{{end}}
