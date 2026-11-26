@@ -15,6 +15,7 @@ import (
 type Room struct {
 	ID, Name, Tenant, Start                        string
 	Rent, ElectricRate, WaterRate, Electric, Water int64
+	LeaseMonths                                    int
 }
 type Reading struct {
 	RoomID, Period                                         string
@@ -128,8 +129,8 @@ func (b *Book) room(id string) *Room {
 }
 
 func (r Room) Revision() string {
-	return hash(fmt.Sprintf("%q %q %q %q %d %d %d %d %d", r.ID, r.Name, r.Tenant,
-		r.Start, r.Rent, r.ElectricRate, r.WaterRate, r.Electric, r.Water))
+	return hash(fmt.Sprintf("%q %q %q %q %d %d %d %d %d %d", r.ID, r.Name, r.Tenant,
+		r.Start, r.Rent, r.ElectricRate, r.WaterRate, r.Electric, r.Water, r.LeaseMonths))
 }
 
 func (b *Book) roomLocks(id string) (hasReading, hasIssued bool) {
@@ -266,6 +267,9 @@ func (b *Book) draft(period string) int {
 	}
 	n := 0
 	for _, r := range b.Rooms {
+		if !b.leaseAt(r, period).ActiveAt(period) {
+			continue
+		}
 		reading := b.reading(r.ID, period)
 		if reading == nil {
 			continue
@@ -289,6 +293,12 @@ func (b *Book) issue(id string) error {
 	i := b.invoice(id)
 	if i == nil {
 		return errMissing
+	}
+	if !i.Issued {
+		room := b.room(i.RoomID)
+		if room == nil || !b.leaseAt(*room, i.Period).ActiveAt(i.Period) {
+			return errors.New("Phòng không có hợp đồng hiệu lực trong kỳ này.")
+		}
 	}
 	i.Issued = true
 	if b.Bank.Configured() {

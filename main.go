@@ -44,7 +44,10 @@ const pilotOrg = "local-pilot"
 
 type RoomView struct {
 	Room
-	Done bool
+	Done     bool
+	Lease    LeaseTerms
+	HasLease bool
+	Renewed  bool
 }
 type Page struct {
 	Screen, Role, Tab, Period, Error, Message, CSRF, InviteID, ShareURL, Code string
@@ -89,11 +92,14 @@ func main() {
 		log.Fatal(err)
 	}
 	defer store.pool.Close()
-	if len(os.Args) > 1 && (os.Args[1] == "seed-demo" || os.Args[1] == "seed-bank-demo") {
+	if len(os.Args) > 1 && (os.Args[1] == "seed-demo" || os.Args[1] == "seed-bank-demo" || os.Args[1] == "seed-lease-demo") {
 		if len(os.Args) != 3 || os.Getenv("ZS_LOCAL_HTTP") != "1" {
 			log.Fatal("Usage in local HTTP mode: zentraspace seed-demo YYYY-MM")
 		}
 		if err := store.book(ctx, pilotOrg, true, func(b *Book) error {
+			if os.Args[1] == "seed-lease-demo" {
+				return b.seedLeaseDemo(os.Args[2])
+			}
 			if os.Args[1] == "seed-bank-demo" {
 				if len(os.Getenv("ZS_MOCK_BANK_SECRET")) < 32 || (b.Bank.Configured() && (b.Bank.BIN != mockBankBIN || b.Bank.Account != mockBankAccount)) {
 					return errors.New("Use a dedicated mock-bank stack with a synthetic beneficiary.")
@@ -369,6 +375,8 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			p.BillingSettings = b.Billing[period]
 		}
 		for _, room := range b.Rooms {
+			var lease LeaseTerms
+			var renewed bool
 			done := b.reading(room.ID, period) != nil
 			if ((tab == "meters" || tab == "billing") && room.Start > period) || (filter == "missing" && done) {
 				continue
@@ -376,7 +384,13 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			if s.role == "meter" {
 				room = Room{ID: room.ID, Name: room.Name, Start: room.Start, Electric: room.Electric, Water: room.Water}
 			} else if tab == "rooms" && room.Start <= period {
-				room.Tenant = b.leaseAt(room, period).Tenant
+				lease = b.leaseAt(room, period)
+				if lease.ActiveAt(period) {
+					room.Tenant = lease.Tenant
+					renewed = lease.Renewal
+				} else {
+					room.Tenant = ""
+				}
 			}
 			if reading := b.reading(room.ID, period); reading != nil {
 				room.Electric = reading.ElectricAfter
@@ -391,7 +405,8 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-			p.Rooms = append(p.Rooms, RoomView{room, done})
+			p.Rooms = append(p.Rooms, RoomView{Room: room, Done: done, Lease: lease,
+				HasLease: lease.Effective != "" && lease.ActiveAt(period), Renewed: renewed})
 		}
 		if s.role == "owner" {
 			for _, i := range b.Invoices {
@@ -645,7 +660,14 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return errInvalid
 			}
 			terms := LeaseTerms{RoomID: id, Effective: value("effective"), Tenant: value("tenant"),
-				Rent: rent, ElectricRate: electric, WaterRate: water}
+				Rent: rent, ElectricRate: electric, WaterRate: water, Renewal: value("renewal") == "yes"}
+			if value("months") != "" {
+				months, err := number(r, "months", 1, 120)
+				if err != nil {
+					return err
+				}
+				terms.Months = int(months)
+			}
 			if err := b.scheduleLease(terms); err != nil {
 				return inputError{err}
 			}
@@ -668,6 +690,7 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 					return errMissing
 				}
 				room.ID, room.Start = current.ID, current.Start
+				room.LeaseMonths = current.LeaseMonths
 				room.Rent, room.ElectricRate, room.WaterRate = current.Rent, current.ElectricRate, current.WaterRate
 				room.Electric, room.Water = current.Electric, current.Water
 				lockOpening, lockRates = b.roomLocks(id)
@@ -679,6 +702,12 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 					return inputError{errors.New("Phòng đã có chỉ số hoặc bảng kê phát hành. Hãy mở lại phòng trước khi lưu.")}
 				}
 				next = "/rooms/" + id + "?saved=1&period=" + period
+			} else if value("months") != "" {
+				months, err := number(r, "months", 1, 120)
+				if err != nil {
+					return err
+				}
+				room.LeaseMonths = int(months)
 			}
 			if !lockRates {
 				var e1, e2, e3 error

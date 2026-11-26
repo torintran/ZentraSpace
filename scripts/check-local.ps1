@@ -38,6 +38,8 @@ try {
     & "$PSScriptRoot/smoke.ps1" -Base $base -EnvFile $envFile -CheckDemo -SecondOwnerPassword $secondOwnerPassword
     & "$PSScriptRoot/bank-smoke.ps1" -Base $base -EnvFile $envFile -MockBase "http://localhost:$MockPort" -MockSecret $config.ZS_MOCK_BANK_SECRET
     if ($Browser) {
+        docker @compose exec -T web zentraspace seed-lease-demo 2026-11
+        docker @compose exec -T web zentraspace seed-lease-demo 2026-11
         npm --prefix (Join-Path $root 'tests/browser') test
     }
 

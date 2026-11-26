@@ -134,7 +134,7 @@
 <section class="card">
 <div class="room-toolbar"><h2>Danh sách phòng</h2><a class="button" href="/?tab=rooms&amp;period={{.Period}}&amp;add=1">Thêm phòng</a></div>
 {{if .Rooms}}<label class="room-search">Tìm theo mã phòng<input type="search" data-room-search></label>{{end}}
-{{range .Rooms}}<article class="list-row" data-room="{{.Name}}"><div><strong>{{.Name}}</strong>{{if .Tenant}}<p>{{.Tenant}}</p>{{end}}<p>Từ {{.Start}}</p></div><a class="button secondary" href="/rooms/{{.ID}}?period={{$.Period}}" aria-label="Xem chi tiết phòng {{.Name}}">Xem chi tiết</a></article>
+{{range .Rooms}}<article class="list-row" data-room="{{.Name}}"><div><strong>{{.Name}}</strong>{{if .Renewed}} <span class="badge good">Đã ký lại</span>{{end}}{{if .Tenant}}<p>{{.Tenant}}</p>{{end}}<p>{{if .HasLease}}{{if .Lease.Months}}Hợp đồng {{.Lease.Months}} tháng · đến hết {{.Lease.Until}}{{else}}Từ {{.Lease.Effective}}{{end}}{{else}}Chưa có hợp đồng hiệu lực kỳ này{{end}}</p></div><a class="button secondary" href="/rooms/{{.ID}}?period={{$.Period}}" aria-label="Xem chi tiết phòng {{.Name}}">Xem chi tiết</a></article>
 {{else}}<p class="subtle">Chưa có phòng. Hãy thêm phòng đầu tiên.</p>{{end}}
 </section>
 <details class="card room-import">
@@ -217,10 +217,12 @@
 </section>
 {{else if .LeaseForm}}
 <section class="card room-form">
-<p class="subtle">Điều khoản áp dụng từ ngày đầu kỳ được chọn đến khi có điều khoản mới. Chọn kỳ sau bảng kê đã phát hành gần nhất.</p>
+<p class="subtle">Điều khoản bắt đầu vào ngày đầu tháng. Chọn kỳ sau bảng kê đã phát hành gần nhất.</p>
 <form method="post" action="/action/lease" class="form">
 <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="id" value="{{.RoomDetail.ID}}">
 <label>Kỳ bắt đầu hiệu lực<input name="effective" type="month" required></label>
+<label>Thời hạn (tháng, để trống nếu chưa xác định)<input name="months" type="number" inputmode="numeric" min="1" max="120"></label>
+<label class="check"><input type="checkbox" name="renewal" value="yes"> Ký lại hợp đồng hiện có</label>
 <label>Người đại diện<input name="tenant" maxlength="150" value="{{.Lease.Tenant}}" required></label>
 <label>Tiền thuê mỗi tháng (đồng)<input name="rent" type="number" min="0" max="100000000" value="{{.Lease.Rent}}" required></label>
 <div class="pair">
@@ -232,8 +234,9 @@
 {{else}}
 <div class="columns">
 <section class="card"><h2>Thông tin phòng</h2><dl class="charges">
-<div><dt>Người đại diện kỳ {{.Period}}</dt><dd>{{if .Lease.Tenant}}{{.Lease.Tenant}}{{else}}Chưa có{{end}}</dd></div>
+<div><dt>Người đại diện kỳ {{.Period}}</dt><dd>{{if and (.Lease.ActiveAt .Period) .Lease.Tenant}}{{.Lease.Tenant}}{{else}}Chưa có{{end}}</dd></div>
 <div><dt>Kỳ đầu tiên</dt><dd>{{.RoomDetail.Start}}</dd></div>
+{{if .Lease.Months}}<div><dt>Thời hạn hợp đồng</dt><dd>{{.Lease.Months}} tháng · đến hết {{.Lease.Until}}</dd></div>{{end}}
 <div><dt>Tiền thuê mỗi tháng</dt><dd>{{money .Lease.Rent}}</dd></div>
 <div><dt>Đơn giá điện</dt><dd>{{money .Lease.ElectricRate}}/kWh</dd></div>
 <div><dt>Đơn giá nước</dt><dd>{{money .Lease.WaterRate}}/m³</dd></div>
@@ -270,7 +273,7 @@
 <section class="card history">
 <div class="room-toolbar"><h2>Điều khoản theo kỳ</h2><a class="button secondary" href="/rooms/{{.RoomDetail.ID}}?period={{.Period}}&amp;contract=1">Thêm điều khoản</a></div>
 {{range .LeaseHistory}}
-<div class="list-row"><div><strong>Từ {{.Effective}}</strong>{{if .Tenant}}<p>{{.Tenant}}</p>{{end}}</div><span>{{money .Rent}}/tháng</span></div>
+<div class="list-row"><div><strong>Từ {{.Effective}}{{if .Months}} đến hết {{.Until}}{{end}}</strong>{{if .Tenant}}<p>{{.Tenant}}{{if .Renewal}} · Ký lại{{end}}</p>{{end}}</div><span>{{money .Rent}}/tháng</span></div>
 {{end}}
 </section>
 {{end}}
@@ -545,6 +548,7 @@
 <input type="hidden" name="csrf" value="{{.CSRF}}"><input type="hidden" name="period" value="{{.Period}}">
 {{with .RoomDetail}}<input type="hidden" name="id" value="{{.ID}}"><input type="hidden" name="revision" value="{{.Revision}}">{{end}}
 <label>Mã phòng<input name="name" value="{{with .RoomDetail}}{{.Name}}{{end}}" placeholder="VD: P101" maxlength="60" required></label>
+{{if not .RoomDetail}}<label>Thời hạn hợp đồng (tháng, không bắt buộc)<input name="months" type="number" inputmode="numeric" min="1" max="120"></label>{{end}}
 {{if not .LockRates}}
 <label>Người đại diện <span class="subtle">(không bắt buộc)</span><input name="tenant" value="{{with .RoomDetail}}{{.Tenant}}{{end}}" maxlength="150"></label>
 <label>Tiền thuê mỗi tháng (đồng)<input name="rent" value="{{with .RoomDetail}}{{.Rent}}{{end}}" type="number" inputmode="numeric" min="0" max="100000000" required></label>

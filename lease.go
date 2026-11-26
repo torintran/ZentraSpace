@@ -9,10 +9,25 @@ import (
 type LeaseTerms struct {
 	RoomID, Effective, Tenant     string
 	Rent, ElectricRate, WaterRate int64
+	Months                        int
+	Renewal                       bool
+}
+
+func (l LeaseTerms) Until() string {
+	start, err := time.Parse("2006-01", l.Effective)
+	if err != nil || l.Months == 0 {
+		return ""
+	}
+	return start.AddDate(0, l.Months-1, 0).Format("2006-01")
+}
+
+func (l LeaseTerms) ActiveAt(period string) bool {
+	until := l.Until()
+	return period >= l.Effective && (until == "" || period <= until)
 }
 
 func (b *Book) leaseHistory(room Room) []LeaseTerms {
-	history := []LeaseTerms{{room.ID, room.Start, room.Tenant, room.Rent, room.ElectricRate, room.WaterRate}}
+	history := []LeaseTerms{{room.ID, room.Start, room.Tenant, room.Rent, room.ElectricRate, room.WaterRate, room.LeaseMonths, false}}
 	for _, terms := range b.Leases {
 		if terms.RoomID == room.ID {
 			history = append(history, terms)
@@ -23,7 +38,7 @@ func (b *Book) leaseHistory(room Room) []LeaseTerms {
 }
 
 func (b *Book) leaseAt(room Room, period string) LeaseTerms {
-	active := LeaseTerms{room.ID, room.Start, room.Tenant, room.Rent, room.ElectricRate, room.WaterRate}
+	active := LeaseTerms{room.ID, room.Start, room.Tenant, room.Rent, room.ElectricRate, room.WaterRate, room.LeaseMonths, false}
 	for _, terms := range b.Leases {
 		if terms.RoomID == room.ID && terms.Effective > active.Effective && terms.Effective <= period {
 			active = terms
@@ -55,7 +70,7 @@ func (b *Book) scheduleLease(terms LeaseTerms) error {
 		return errMissing
 	}
 	if _, err := time.Parse("2006-01", terms.Effective); err != nil || terms.Effective <= room.Start ||
-		terms.Tenant == "" || len(terms.Tenant) > 150 ||
+		terms.Tenant == "" || len(terms.Tenant) > 150 || terms.Months < 0 || terms.Months > 120 ||
 		terms.Rent < 0 || terms.Rent > 100000000 ||
 		terms.ElectricRate < 0 || terms.ElectricRate > 100000 ||
 		terms.WaterRate < 0 || terms.WaterRate > 1000000 {
@@ -67,6 +82,19 @@ func (b *Book) scheduleLease(terms LeaseTerms) error {
 				return nil
 			}
 			return errors.New("Đã có điều khoản hiệu lực từ kỳ này.")
+		}
+	}
+	if terms.Renewal {
+		start, _ := time.Parse("2006-01", terms.Effective)
+		priorPeriod := start.AddDate(0, -1, 0).Format("2006-01")
+		if !b.leaseAt(*room, priorPeriod).ActiveAt(priorPeriod) {
+			return errors.New("Kỳ ký lại phải nối tiếp một hợp đồng đang hiệu lực.")
+		}
+	}
+	for _, existing := range b.leaseHistory(*room) {
+		if existing.Effective < terms.Effective && existing.Until() >= terms.Effective ||
+			existing.Effective > terms.Effective && terms.Until() >= existing.Effective {
+			return errors.New("Thời hạn bị trùng với hợp đồng đã lên lịch.")
 		}
 	}
 	for _, invoice := range b.Invoices {

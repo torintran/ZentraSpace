@@ -33,6 +33,17 @@ async function run() {
     await owner.getByRole('button', {name:'Đăng nhập', exact:true}).click();
     await show(owner, 'Tổng quan kỳ thu');
     await owner.goto(`${app}/?tab=rooms&period=${period}`);
+    if (process.env.ZS_BROWSER_ENV_FILE) {
+      const demoRooms = owner.locator('[data-room^="HD-MAU-2026-11-"]');
+      assert.equal(await demoRooms.count(), 6);
+      assert.ok((await demoRooms.filter({hasText:'P04'}).textContent()).includes('18 tháng'));
+      await owner.getByRole('link', {name:'Xem chi tiết phòng HD-MAU-2026-11-P05', exact:true}).click();
+      await owner.getByText('Từ 2026-05 đến hết 2026-10', {exact:true}).waitFor();
+      await owner.getByText('Từ 2026-11 đến hết 2027-10', {exact:true}).waitFor();
+      await owner.getByText('Khách thuê mẫu 05 · Ký lại', {exact:true}).waitFor();
+      await owner.goto(`${app}/?tab=rooms&period=${period}`);
+      console.log('PASS Playwright: six stable contract fixtures, eighteen-month term and renewal history');
+    }
     await owner.getByRole('link', {name:'Thêm phòng', exact:true}).click();
     await fields(owner.locator('form[action="/action/room"]'), {
       name:roomName, tenant:'Người thuê mô phỏng', rent:'2000000',

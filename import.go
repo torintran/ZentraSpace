@@ -59,6 +59,7 @@ func (b *Book) importRooms(period, data string, commit bool) (ImportPreview, err
 					continue
 				}
 				room.ID = saved.ID
+				room.LeaseMonths = saved.LeaseMonths
 				if room != saved {
 					return p, fmt.Errorf("Dòng %d: mã phòng đã có với thông tin khác.", line)
 				}

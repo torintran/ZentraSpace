@@ -12,6 +12,8 @@ Màn đăng nhập nhận tên tài khoản `owner` hoặc `meter` mặc định
 
 Để nạp dữ liệu giả lập cho kỳ 11/2026, chạy `docker compose exec web zentraspace seed-demo 2026-11` rồi mở **Tổng quan** và chọn kỳ đó. Bốn phòng `DEMO-` lần lượt có bảng kê đã thu đủ, đã thu một phần, đang nháp và chưa nhập công tơ. Chạy lại cùng kỳ giữ nguyên các phòng demo đã tạo. Lệnh nạp chỉ chạy ở chế độ HTTP cục bộ.
 
+Lệnh `docker compose exec web zentraspace seed-lease-demo 2026-11` bổ sung sáu phòng `HD-MAU-` với giá thuê và chỉ số giả lập, hợp đồng 6, 12 và 18 tháng, hai phòng ký lại, cùng bảng kê nhiều kỳ. Chạy lại cùng kỳ giữ nguyên dữ liệu demo đã tạo.
+
 Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để nhập một phòng hoặc dán CSV theo mẫu. Xem kết quả kiểm CSV trước khi lưu. Sang **Nhập điện nước** để ghi chỉ số cuối kỳ, sau đó vào **Chốt kỳ thu** để tạo bản nháp. Mở từng bảng kê, kiểm tiền và phát hành. Thao tác thu thiếu, thu dư, hoàn và ghi giảm đều có lịch sử. CSV công nợ tải được từ màn chốt kỳ.
 
 Để sửa một khoản thu hoặc ghi giảm nhập sai, mở **Lịch sử giao dịch**, chọn **Đảo bút toán** và nhập lý do. Lịch sử giữ cả hai bút toán và mã tham chiếu chứng từ gốc. Khoản thu đã ghép sao kê cần kiểm tra lại giao dịch ngân hàng trước khi điều chỉnh.
