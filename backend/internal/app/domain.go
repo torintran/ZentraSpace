@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -17,6 +18,8 @@ type Room struct {
 	Rent, ElectricRate, WaterRate, Electric, Water int64
 	LeaseMonths                                    int
 	Prepared                                       bool `json:",omitempty"`
+	SiteID, PolicyID, Description, PolicyFeeLabel  string
+	PolicyFee                                      int64
 }
 type Reading struct {
 	RoomID, Period                                         string
@@ -32,6 +35,7 @@ type Invoice struct {
 	Rent, ElectricRate, WaterRate, ElectricAmount, WaterAmount, Total int64
 	Reading                                                           Reading
 	Issued                                                            bool
+	IssuedOn                                                          string `json:",omitempty"`
 	Entries                                                           []Entry
 	PaymentCode                                                       string
 }
@@ -66,6 +70,9 @@ type Invite struct {
 	Used, Revoked           bool
 }
 type Book struct {
+	Sites             []Site
+	Policies          []RoomPolicy
+	Residents         []Resident
 	CashEntries       []CashEntry
 	Rooms             []Room
 	RoomFees          []RoomFee
@@ -131,8 +138,8 @@ func (b *Book) room(id string) *Room {
 }
 
 func (r Room) Revision() string {
-	return hash(fmt.Sprintf("%q %q %q %q %d %d %d %d %d %d %t", r.ID, r.Name, r.Tenant,
-		r.Start, r.Rent, r.ElectricRate, r.WaterRate, r.Electric, r.Water, r.LeaseMonths, r.Prepared))
+	data, _ := json.Marshal(r)
+	return hash(string(data))
 }
 
 func (b *Book) roomLocks(id string) (hasReading, hasIssued bool) {
@@ -153,9 +160,12 @@ func (b *Book) roomLocks(id string) (hasReading, hasIssued bool) {
 
 func (b *Book) saveRoom(room Room, revision string) error {
 	for _, existing := range b.Rooms {
-		if existing.ID != room.ID && strings.EqualFold(existing.Name, room.Name) {
-			return errors.New("Mã phòng đã tồn tại.")
+		if existing.ID != room.ID && existing.SiteID == room.SiteID && strings.EqualFold(existing.Name, room.Name) {
+			return errors.New("Mã phòng đã tồn tại trong dãy này.")
 		}
+	}
+	if err := b.checkSiteCapacity(room); err != nil {
+		return err
 	}
 	if room.ID == "" {
 		if len(b.Rooms) >= 150 {
@@ -254,6 +264,7 @@ func (b *Book) issue(id string) error {
 		}
 	}
 	i.Issued = true
+	i.IssuedOn = time.Now().In(vietnam).Format(time.DateOnly)
 	if b.Bank.Configured() {
 		b.ensurePaymentCode(i)
 	}

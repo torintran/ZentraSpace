@@ -10,6 +10,7 @@ import { activeAt, has, itemKey, money, randomKey, until } from './view';
 import type { PageData } from './view';
 import { RoomForm } from './common';
 import { RoomContracts } from './room-contracts';
+import { RoomPhoto, RoomResidents, RoomTimeline } from './room-records';
 
 export function RoomScreen({ page }: { page: PageData }) {
   const room = page.RoomDetail;
@@ -191,6 +192,8 @@ export function RoomScreen({ page }: { page: PageData }) {
             <a href="#room-contracts">
               <ClipboardList size={18} aria-hidden /> Hợp đồng
             </a>
+            <a href="#room-residents">Người ở</a>
+            <a href="#room-timeline">Lịch sử phòng</a>
           </nav>
           {!occupied && (
             <Panel className="card room-vacancy">
@@ -214,6 +217,29 @@ export function RoomScreen({ page }: { page: PageData }) {
           <div className="columns">
             <Panel className="card" id="room-profile" as="section">
               <h2>Thông tin phòng</h2>
+              {room.Description && (
+                <p className="room-description">{room.Description}</p>
+              )}
+              {page.RoomSite && (
+                <p>
+                  {page.RoomSite.Name}
+                  {page.RoomSite.Address && ' · ' + page.RoomSite.Address}
+                  {page.RoomSite.MapURL && (
+                    <>
+                      {' '}
+                      ·{' '}
+                      <a
+                        href={page.RoomSite.MapURL}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Mở bản đồ
+                      </a>
+                    </>
+                  )}
+                </p>
+              )}
+              <RoomPhoto page={page} roomID={room.ID} />
               <dl className="charges">
                 <div>
                   <dt>Người đại diện kỳ {page.Period}</dt>
@@ -298,6 +324,12 @@ export function RoomScreen({ page }: { page: PageData }) {
             </Panel>
           </div>
           <Panel className="card history" id="room-fees" as="section">
+            {room.PolicyFee > 0 && (
+              <p className="notice">
+                Phí theo mẫu · {room.PolicyFeeLabel} · {money(room.PolicyFee)}
+                /tháng
+              </p>
+            )}
             <h2>Phí riêng của phòng</h2>
             {has(page.RoomFees) ? (
               page.RoomFees.map((fee, index) => (
@@ -427,6 +459,8 @@ export function RoomScreen({ page }: { page: PageData }) {
             </details>
           </Panel>
           <RoomContracts page={page} roomId={room.ID} />
+          <RoomResidents page={page} roomID={room.ID} occupied={occupied} />
+          <RoomTimeline page={page} />
         </>
       )}
     </>

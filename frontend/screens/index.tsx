@@ -70,23 +70,31 @@ export function Screens({ page }: { page: PageData }) {
           )}
         </div>
       </header>
-      {page.Role === 'owner' && <WorkspaceNav page={page} />}
-      <main
-        id="main"
-        className={wide.has(page.Screen) ? 'layout' : 'layout narrow'}
+      <div
+        className={
+          page.Role === 'owner'
+            ? 'workspace-frame with-sidebar'
+            : 'workspace-frame'
+        }
       >
-        {page.Error && (
-          <Notice className="notice error" role="alert">
-            {page.Error}
-          </Notice>
-        )}
-        {page.Message && (
-          <Notice className="notice" role="status">
-            {page.Message}
-          </Notice>
-        )}
-        <ScreenComponent page={page} />
-      </main>
+        {page.Role === 'owner' && <WorkspaceNav page={page} />}
+        <main
+          id="main"
+          className={wide.has(page.Screen) ? 'layout' : 'layout narrow'}
+        >
+          {page.Error && (
+            <Notice className="notice error" role="alert">
+              {page.Error}
+            </Notice>
+          )}
+          {page.Message && (
+            <Notice className="notice" role="status">
+              {page.Message}
+            </Notice>
+          )}
+          <ScreenComponent page={page} />
+        </main>
+      </div>
       <footer className="site-footer">
         <div className="layout site-footer-inner">
           <div className="site-footer-identity">

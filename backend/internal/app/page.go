@@ -8,8 +8,18 @@ type RoomView struct {
 	Renewed    bool
 	Handover   bool
 	Adjustment MeterAdjustment
+	People     int
+	HasPhoto   bool
 }
 type Page struct {
+	LoginProfile                                                              string
+	Sites                                                                     []SiteView
+	Policies                                                                  []RoomPolicy
+	SelectedSite                                                              string
+	RoomSite                                                                  *SiteView
+	Residents                                                                 []Resident
+	RoomTimeline                                                              []RoomEvent
+	PolicyMutable, HasPhoto                                                   bool
 	Screen, Role, Tab, Period, Error, Message, CSRF, InviteID, ShareURL, Code string
 	Filter                                                                    string
 	BillingSettings                                                           BillingSettings

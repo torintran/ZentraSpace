@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
-import { Action, ActionLink, FieldInput } from './components';
+import { Action, ActionLink, FieldArea, FieldInput } from './components';
+import { RoomPricing } from './room-pricing';
 import { has, itemKey, money, usage } from './view';
 import type { PageData, Invoice } from './view';
 
@@ -70,6 +71,31 @@ export function RoomForm({ page }: { page: PageData }) {
             defaultValue={has(page.RoomDetail) ? page.RoomDetail.Name : ''}
           />
         </label>
+        {!!page.Sites?.length && (
+          <label>
+            Dãy trọ
+            <select
+              name="site"
+              defaultValue={page.RoomDetail?.SiteID || page.SelectedSite || ''}
+            >
+              <option value="">Chưa gán dãy</option>
+              {page.Sites.map((site) => (
+                <option key={site.ID} value={site.ID}>
+                  {site.Name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label>
+          Mô tả phòng
+          <FieldArea
+            name="description"
+            rows={2}
+            maxLength={1000}
+            defaultValue={page.RoomDetail?.Description}
+          />
+        </label>
         {!has(page.RoomDetail) ? (
           <>
             <label>
@@ -98,48 +124,12 @@ export function RoomForm({ page }: { page: PageData }) {
                 />
               </label>
             )}
-            <label>
-              Tiền thuê mỗi tháng (đồng)
-              <FieldInput
-                name="rent"
-                type="number"
-                inputMode="numeric"
-                min="0"
-                max="100000000"
-                required
-                defaultValue={has(page.RoomDetail) ? page.RoomDetail.Rent : ''}
-              />
-            </label>
-            <div className="pair">
-              <label>
-                Giá điện (đồng/kWh)
-                <FieldInput
-                  name="electricRate"
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  max="100000"
-                  required
-                  defaultValue={
-                    has(page.RoomDetail) ? page.RoomDetail.ElectricRate : ''
-                  }
-                />
-              </label>
-              <label>
-                Giá nước (đồng/m³)
-                <FieldInput
-                  name="waterRate"
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  max="1000000"
-                  required
-                  defaultValue={
-                    has(page.RoomDetail) ? page.RoomDetail.WaterRate : ''
-                  }
-                />
-              </label>
-            </div>
+            <RoomPricing
+              room={page.RoomDetail}
+              policies={
+                !page.RoomDetail || page.PolicyMutable ? page.Policies : null
+              }
+            />
           </>
         ) : null}
         {!has(page.LockOpening) ? (

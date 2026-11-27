@@ -98,12 +98,20 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	username := strings.ToLower(strings.TrimSpace(r.Form.Get("account")))
+	profile := r.Form.Get("profile")
+	switch profile {
+	case "owner", "meter":
+		username = profile
+	case "", "other":
+	default:
+		username = ""
+	}
 	account, known := a.accounts[username]
 	if !known {
 		account = a.accounts["owner"]
 	}
 	if bcrypt.CompareHashAndPassword(account.passwordHash, []byte(r.Form.Get("password"))) != nil || !known {
-		a.page(w, r, Page{Screen: "login", Status: http.StatusUnauthorized, Error: "Kiểm tra lại tài khoản hoặc mật khẩu."})
+		a.page(w, r, Page{Screen: "login", Status: http.StatusUnauthorized, Error: "Kiểm tra lại tài khoản hoặc mật khẩu.", LoginProfile: profile})
 		return
 	}
 	id := a.newSession(account.role, account.organization, 8*time.Hour)

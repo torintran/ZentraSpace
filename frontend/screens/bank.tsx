@@ -105,8 +105,8 @@ export function BankScreen({ page }: { page: PageData }) {
           {has(configured(bank.Account)) ? (
             <>
               <p className="notice">
-                Đang dùng tài khoản ••••{suffix(bank.Account)} · BIN{' '}
-                {bank.Account.BIN}
+                {bank.BankName || 'Tài khoản nhận tiền'} · ••••
+                {suffix(bank.Account)}
               </p>
             </>
           ) : (
@@ -130,15 +130,19 @@ export function BankScreen({ page }: { page: PageData }) {
             <form method="post" action="/bank/account" className="form">
               <input type="hidden" name="csrf" value={page.CSRF} />
               <label>
-                Mã BIN ngân hàng (6 số)
-                <FieldInput
-                  type="text"
-                  name="bin"
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
+                Ngân hàng
+                <select
+                  name="bank"
                   required
-                />
+                  defaultValue={bank.BankName ? bank.Account.BIN : ''}
+                >
+                  <option value="">Chọn ngân hàng</option>
+                  {bank.Options.map((bank) => (
+                    <option key={bank.BIN} value={bank.BIN}>
+                      {bank.Name}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 Số tài khoản nhận

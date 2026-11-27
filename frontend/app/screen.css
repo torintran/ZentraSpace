@@ -779,54 +779,79 @@ main.layout {
   margin-bottom: 8px;
 }
 
-.workspace-nav {
+.workspace-frame {
+  flex: 1 0 auto;
+  min-width: 0;
+}
+.with-sidebar {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+}
+.workspace-sidebar {
   background: var(--paper);
-  border-bottom: 1px solid var(--line);
+  border-inline-end: 1px solid var(--line);
+  min-width: 0;
 }
-
-.workspace-nav-inner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
+.workspace-sidebar-desktop {
+  position: sticky;
+  top: 0;
+  padding: 20px 12px;
+}
+.workspace-sidebar-mobile {
+  display: none;
+}
+.workspace-links {
+  display: grid;
   gap: 6px;
-  padding-block: 8px;
 }
-
-.workspace-nav a {
+.workspace-links a,
+.workspace-sidebar-mobile summary {
   display: flex;
   min-height: 44px;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 9px 12px;
   border-radius: 9px;
-  font-size: 0.9375rem;
+  font-weight: 700;
   text-decoration: none;
 }
-
-.workspace-nav svg {
+.workspace-links svg,
+.workspace-sidebar-mobile svg {
   flex: none;
 }
-.workspace-nav a:hover {
+.workspace-links a:hover {
   background: var(--surface);
 }
-.workspace-nav a[aria-current='page'] {
-  color: #fff;
+.workspace-links a[aria-current='page'] {
+  color: white;
   background: var(--primary);
 }
 .button .mantine-Button-label {
   white-space: normal;
 }
-
-@media (max-width: 640px) {
-  .workspace-nav-inner {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (max-width: 780px) {
+  .with-sidebar {
+    display: block;
   }
-  .workspace-nav a {
-    padding-inline: 8px;
-    line-height: 1.3;
+  .workspace-sidebar {
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .workspace-sidebar-desktop {
+    display: none;
+  }
+  .workspace-sidebar-mobile {
+    display: block;
+    padding: 4px 12px;
+  }
+  .workspace-sidebar-mobile summary {
+    cursor: pointer;
+  }
+  .workspace-sidebar-mobile .workspace-links {
+    padding-block: 4px 10px;
   }
 }
+
 .room-sections,
 .room-vacancy {
   display: flex;
@@ -868,7 +893,101 @@ main.layout {
 }
 #room-profile:target,
 #room-fees:target,
-#room-contracts:target {
+#room-contracts:target,
+#room-residents:target,
+#room-timeline:target {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+.room-filters {
+  margin-top: 16px;
+}
+.room-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 12px;
+}
+.room-cards article {
+  height: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  border: 1px solid var(--line);
+  border-inline-start: 4px solid var(--primary);
+  border-radius: 12px;
+  padding: 14px;
+}
+.room-cards article[data-room-state='vacant'] {
+  border-inline-start-color: #a76519;
+  background: #fff9ec;
+}
+.room-cards article > a {
+  margin-top: auto;
+}
+.room-card-photo,
+.room-profile-photo {
+  display: block;
+  width: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.room-card-photo {
+  height: 140px;
+}
+.room-profile-photo {
+  height: auto;
+  max-height: 360px;
+  margin-block: 12px;
+}
+.room-description {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.person-count {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-block: 8px;
+}
+.person-avatar {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(145deg, white, var(--tint));
+  color: var(--primary);
+  box-shadow:
+    inset 0 0 0 1px #b8d0bf,
+    0 2px 3px #173f2c26;
+}
+.room-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.room-timeline li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 10px 12px;
+  border-inline-start: 2px solid var(--line);
+}
+.room-timeline time {
+  min-width: 6.5rem;
+  color: var(--muted);
+}
+.room-timeline p {
+  margin: 3px 0 0;
+}
+.room-timeline + h2 svg,
+#room-timeline h2 svg {
+  vertical-align: text-bottom;
+}
+
+.login-form:has(select):not(:has(option[value='other']:checked))
+  .login-account-name {
+  display: none;
 }

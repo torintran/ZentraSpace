@@ -125,7 +125,7 @@ func (b *Book) cashReport(period string) CashReport {
 	for _, r := range b.Rooms {
 		if r.Start <= period {
 			rooms[r.ID] = len(report.Rooms)
-			report.Rooms = append(report.Rooms, DepositRoom{ID: r.ID, Name: r.Name})
+			report.Rooms = append(report.Rooms, DepositRoom{ID: r.ID, Name: b.roomLabel(r)})
 		}
 	}
 	for _, e := range b.CashEntries {

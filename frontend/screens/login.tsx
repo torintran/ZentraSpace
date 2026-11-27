@@ -4,26 +4,28 @@ import { LoginPassword } from './browser-controls';
 import { Action, Panel } from './components';
 import type { PageData } from './view';
 
-export function LoginScreen(_: { page: PageData }) {
+export function LoginScreen({ page }: { page: PageData }) {
   return (
     <Panel className="card auth" as="section">
       <h1>Đăng nhập</h1>
       <p className="subtle">Quản lý phòng và các kỳ thu của bạn.</p>
-      <form method="post" action="/login" className="form">
+      <form method="post" action="/login" className="form login-form">
+        <label>
+          Tài khoản
+          <select name="profile" defaultValue={page.LoginProfile || 'owner'}>
+            <option value="owner">Chủ trọ</option>
+            <option value="meter">Nhân viên công tơ</option>
+            <option value="other">Tài khoản khác</option>
+          </select>
+        </label>
         <TextInput
-          label="Tài khoản"
+          className="login-account-name"
+          label="Tên đăng nhập"
           name="account"
-          list="local-accounts"
           maxLength={40}
           autoComplete="username"
-          defaultValue="owner"
           size="md"
-          required
         />
-        <datalist id="local-accounts">
-          <option value="owner" label="Chủ trọ" />
-          <option value="meter" label="Nhân viên công tơ" />
-        </datalist>
         <LoginPassword />
         <Action leftSection={<LogIn aria-hidden size={18} />}>Đăng nhập</Action>
       </form>

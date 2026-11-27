@@ -3,13 +3,19 @@ import { has, until } from './view';
 import type { PageData } from './view';
 import { RoomForm } from './common';
 import { RoomList } from './browser-controls';
+import { PersonIcons } from './room-records';
 
 export function RoomsPanel({ page }: { page: PageData }) {
+  const roomListURL =
+    '/?tab=rooms&period=' +
+    page.Period +
+    (page.SelectedSite ? '&site=' + encodeURIComponent(page.SelectedSite) : '');
+  const siteNames = new Map(page.Sites?.map((site) => [site.ID, site.Name]));
   return (
     <>
       {has(page.RoomForm) ? (
         <>
-          <a className="back" href={'/?tab=rooms&period=' + page.Period}>
+          <a className="back" href={roomListURL}>
             ← Về danh sách phòng
           </a>
           <Panel className="card room-form" as="section">
@@ -26,22 +32,53 @@ export function RoomsPanel({ page }: { page: PageData }) {
           <Panel className="card" as="section">
             <div className="room-toolbar">
               <h2>Danh sách phòng</h2>
-              <ActionLink
-                className="button"
-                href={'/?tab=rooms&period=' + page.Period + '&add=1'}
-              >
+              <ActionLink className="button" href={roomListURL + '&add=1'}>
                 Thêm phòng
               </ActionLink>
             </div>
+            {!!page.Sites?.length && (
+              <form action="/" method="get" className="period room-filters">
+                <input type="hidden" name="tab" value="rooms" />
+                <input type="hidden" name="period" value={page.Period} />
+                <label>
+                  Dãy trọ
+                  <select name="site" defaultValue={page.SelectedSite}>
+                    <option value="">Tất cả dãy</option>
+                    {page.Sites.map((site) => (
+                      <option key={site.ID} value={site.ID}>
+                        {site.Name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Action className="secondary">Xem phòng theo dãy</Action>
+              </form>
+            )}
             {has(page.Rooms) ? (
               <RoomList
                 rooms={page.Rooms.map((room) => ({
                   id: room.ID,
                   name: room.Name,
                   row: (
-                    <article className="list-row">
+                    <article
+                      className="list-row"
+                      data-room-state={room.HasLease ? 'occupied' : 'vacant'}
+                    >
+                      {room.HasPhoto && (
+                        <img
+                          className="room-card-photo"
+                          src={'/rooms/' + room.ID + '/photo'}
+                          alt=""
+                          loading="lazy"
+                          width={320}
+                          height={160}
+                        />
+                      )}
                       <div>
                         <strong>{room.Name}</strong>
+                        {siteNames.has(room.SiteID) && (
+                          <p>{siteNames.get(room.SiteID)}</p>
+                        )}
                         {!room.HasLease && (
                           <Status className="badge">Phòng trống</Status>
                         )}
@@ -51,6 +88,7 @@ export function RoomsPanel({ page }: { page: PageData }) {
                             <Status className="badge good">Đã ký lại</Status>
                           </>
                         ) : null}
+                        {room.People > 0 && <PersonIcons count={room.People} />}
                         {has(room.Tenant) ? (
                           <>
                             <p>{room.Tenant}</p>

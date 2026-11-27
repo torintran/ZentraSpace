@@ -105,6 +105,107 @@ async function checkRoomOnboarding(browser, owner, tenant) {
   console.log('PASS Playwright: prepare room and fees, start first lease, private document, then bill');
 }
 
+async function checkPropertyWorkspace(owner, tenant) {
+  await owner.setViewportSize({width:1440, height:900});
+  await owner.goto(`${app}/?period=${period}`);
+  const sidebar = owner.getByRole('navigation', {name:'Khu vực quản lý'});
+  await sidebar.getByRole('link', {name:'Dãy trọ', exact:true}).click();
+  const siteName = roomName + '-DAY';
+  const site = owner.locator('form[action="/action/site"]');
+  await fields(site, {name:siteName, address:'Địa chỉ mô phỏng', capacity:'1'});
+  await site.locator('summary').click();
+  await fields(site, {coordinates:'10.7769, 106.7009'});
+  await site.getByRole('button', {name:'Lưu dãy trọ'}).click();
+  const siteRow = owner.locator('article').filter({hasText:siteName});
+  assert.match(await siteRow.getByRole('link', {name:'Mở bản đồ'}).getAttribute('href'), /openstreetmap\.org.*mlat=10\.776900/);
+
+  await sidebar.getByRole('link', {name:'Mẫu giá và phí', exact:true}).click();
+  const policyName = roomName + '-MAU';
+  const policy = owner.locator('form[action="/action/policy"]');
+  await fields(policy, {name:policyName, rent:'1200000', electricRate:'3000', waterRate:'10000', fee:'50000', feeLabel:'Wi-Fi theo mẫu'});
+  await policy.getByRole('button', {name:'Lưu mẫu giá và phí'}).click();
+  await owner.getByText(policyName, {exact:true}).waitFor();
+  await sidebar.getByRole('link', {name:'Dãy trọ', exact:true}).click();
+  await siteRow.getByRole('link', {name:'Xem phòng'}).click();
+  await owner.getByRole('link', {name:'Thêm phòng', exact:true}).click();
+  const room = owner.locator('form[action="/action/room"]');
+  const name = roomName + '-P01';
+  const siteID = await room.locator('[name="site"]').inputValue();
+  assert.ok(siteID);
+  await fields(room, {name, description:'Phòng có cửa sổ'});
+  await room.getByRole('combobox', {name:'Mẫu giá và phí'}).selectOption({label:policyName});
+  const policyID = await room.locator('[name="policy"]').inputValue();
+  const csrf = await room.locator('[name="csrf"]').inputValue();
+  await room.getByRole('button', {name:'Lưu phòng', exact:true}).click();
+  const roomCard = owner.locator('article').filter({hasText:name});
+  assert.equal(await roomCard.getAttribute('data-room-state'), 'vacant');
+  const tooManyRooms = await owner.request.post(app + '/action/room', {
+    headers:{Origin:app}, form:{csrf, period, name:name+'-extra', site:siteID, policy:policyID, electric:'0', water:'0'},
+  });
+  assert.equal(tooManyRooms.status(), 422);
+
+  await roomCard.getByRole('link', {name:`Xem chi tiết phòng ${name}`, exact:true}).click();
+  const roomURL = owner.url();
+  await owner.getByText('Phòng có cửa sổ', {exact:true}).waitFor();
+  await owner.getByText('Thêm ảnh phòng', {exact:true}).click();
+  const photoForm = owner.locator('form[action$="/photo"]');
+  const photoPath = await photoForm.getAttribute('action');
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwqk8FAAItASeOCvhFAAAAAElFTkSuQmCC','base64');
+  await photoForm.locator('[type="file"]').setInputFiles({name:'room.png', mimeType:'image/png', buffer:png});
+  await photoForm.getByRole('button', {name:'Lưu ảnh phòng'}).click();
+  await owner.getByRole('img', {name:`Ảnh phòng ${name}`}).waitFor();
+  assert.equal((await owner.request.get(app + photoPath)).headers()['content-type'], 'image/jpeg');
+  assert.equal((await tenant.request.get(app + photoPath, {maxRedirects:0})).status(), 303);
+
+  await owner.getByRole('link', {name:'Tiếp nhận người thuê', exact:true}).first().click();
+  const lease = owner.locator('form[action="/action/lease"]');
+  assert.equal(await lease.locator('[name="rent"]').inputValue(), '1200000');
+  await fields(lease, {effective:period, tenant:'Người đại diện dãy mẫu'});
+  await lease.getByRole('button', {name:'Lưu hợp đồng'}).click();
+  for (const person of ['Người ở cùng 01','Người ở cùng 02']) {
+    await owner.getByText('Thêm người ở cùng', {exact:true}).click();
+    const resident = owner.locator('form[action="/action/resident"]');
+    await fields(resident, {name:person, joinedOn:'2026-11-01'});
+    await resident.getByRole('button', {name:'Lưu người ở'}).click();
+    await owner.locator('#room-residents').getByText(person, {exact:true}).waitFor();
+  }
+  await owner.goto(`${app}/?tab=rooms&period=${period}&site=${siteID}`);
+  assert.equal(await roomCard.getAttribute('data-room-state'), 'occupied');
+  await roomCard.getByRole('img', {name:'3 người ở', exact:true}).waitFor();
+  assert.equal(await roomCard.locator('.person-avatar').count(), 3);
+
+  await owner.goto(`${app}/?tab=meters&period=${period}`);
+  const meter = owner.locator('.meter-row').filter({hasText:name});
+  await fields(meter, {electric:'1', water:'1'});
+  await meter.getByRole('button', {name:'Lưu chỉ số'}).click();
+  await owner.goto(`${app}/?tab=billing&period=${period}`);
+  await owner.getByRole('button', {name:'Tạo bảng kê nháp'}).click();
+  await owner.locator('article').filter({hasText:name}).getByRole('link', {name:'Xem bảng kê'}).click();
+  await owner.getByText('1.263.000 ₫', {exact:true}).waitFor();
+  await owner.getByRole('button', {name:'Phát hành bảng kê'}).click();
+  const payment = owner.locator('form[action="/action/post"]').first();
+  await fields(payment, {amount:'90000'});
+  await payment.locator('[name="method"]').selectOption('cash');
+  await payment.getByRole('button', {name:'Ghi khoản thu'}).click();
+  await owner.goto(roomURL);
+  const timeline = owner.locator('#room-timeline');
+  await timeline.getByText('Hợp đồng có hiệu lực', {exact:true}).waitFor();
+  await timeline.getByText('Thu tiền phòng', {exact:true}).waitFor();
+  await timeline.getByText('90.000 ₫', {exact:true}).waitFor();
+
+  await owner.setViewportSize({width:320, height:820});
+  const mobileMenu = owner.locator('.workspace-sidebar-mobile');
+  await mobileMenu.locator('summary').click();
+  await mobileMenu.getByRole('link', {name:'Đối soát ngân hàng', exact:true}).click();
+  await owner.getByText('Đổi tài khoản', {exact:true}).click();
+  const banks = owner.getByRole('combobox', {name:'Ngân hàng', exact:true});
+  assert.ok(await banks.locator('option').count() > 50);
+  assert.equal(await banks.locator('option').filter({hasText:'Vietcombank'}).count(), 1);
+  assert.equal(await owner.locator('[name="bin"]').count(), 0);
+  assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth === innerWidth));
+  console.log('PASS Playwright: sidebar, site and map, room policy, private photo, three residents, timeline and bank names');
+}
+
 async function run() {
   assert.ok(password, 'The test environment requires an owner password.');
   const channel = process.env.ZS_BROWSER_CHANNEL;
@@ -114,6 +215,13 @@ async function run() {
     const clientErrors = [];
     owner.on('pageerror', error => clientErrors.push(error.message));
     await owner.goto(app + '/login');
+    assert.equal(await owner.locator('datalist').count(), 0);
+    const loginProfile = owner.getByRole('combobox', {name:'Tài khoản', exact:true});
+    await loginProfile.selectOption('other');
+    await owner.getByRole('textbox', {name:'Tên đăng nhập'}).waitFor();
+    await loginProfile.selectOption('meter');
+    await owner.getByRole('textbox', {name:'Tên đăng nhập'}).waitFor({state:'hidden'});
+    await loginProfile.selectOption('owner');
     const passwordInput = owner.getByLabel(/^Mật khẩu/);
     const togglePassword = owner.getByRole('button', {name:'Hiện hoặc ẩn mật khẩu'});
     await passwordInput.fill(password);
@@ -301,6 +409,7 @@ async function run() {
     assert.equal((await invalidRefund).status(), 422);
     console.log('PASS Playwright: expense, deposit, refund, balances, private receipt and CSV, refund guard');
     await checkRoomOnboarding(browser, owner, tenant);
+    await checkPropertyWorkspace(owner, tenant);
   } finally {
     await browser.close();
   }

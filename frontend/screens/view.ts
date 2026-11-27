@@ -55,6 +55,11 @@ type Room = {
   Water: number;
   LeaseMonths: number;
   Prepared?: boolean;
+  SiteID: string;
+  PolicyID: string;
+  Description: string;
+  PolicyFeeLabel: string;
+  PolicyFee: number;
 };
 type RoomView = Room & {
   Done: boolean;
@@ -63,6 +68,41 @@ type RoomView = Room & {
   Renewed: boolean;
   Handover: boolean;
   Adjustment: Adjustment;
+  People: number;
+  HasPhoto: boolean;
+};
+type Site = {
+  ID: string;
+  Name: string;
+  Address: string;
+  Capacity: number;
+  Rooms: number;
+  Occupied: number;
+  MapURL: string;
+};
+type RoomPolicy = {
+  ID: string;
+  Name: string;
+  Rent: number;
+  ElectricRate: number;
+  WaterRate: number;
+  Fee: number;
+  FeeLabel: string;
+};
+type Resident = {
+  ID: string;
+  Name: string;
+  Phone: string;
+  JoinedOn: string;
+  LeftOn: string;
+};
+type RoomEvent = {
+  Date: string;
+  Kind: string;
+  Title: string;
+  Detail: string;
+  Amount: number;
+  InvoiceID: string;
 };
 type FeeLine = { Label: string; Amount: number };
 type RoomFee = FeeLine & {
@@ -141,6 +181,8 @@ type BankTransfer = {
 };
 type Bank = {
   Account: BankAccount;
+  Options: { BIN: string; Code: string; Name: string }[];
+  BankName: string;
   Transfers: BankTransfer[] | null;
   Reviewed: boolean;
   Next: number;
@@ -182,6 +224,15 @@ type Dashboard = {
     | null;
 };
 export type PageData = {
+  LoginProfile: string;
+  Sites: Site[] | null;
+  Policies: RoomPolicy[] | null;
+  SelectedSite: string;
+  RoomSite: Site | null;
+  Residents: Resident[] | null;
+  RoomTimeline: RoomEvent[] | null;
+  PolicyMutable: boolean;
+  HasPhoto: boolean;
   Screen: Screen;
   Role: string;
   Tab: string;

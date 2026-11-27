@@ -35,6 +35,8 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("POST /cash/receipt/{key}", a.cashReceipt)
 	m.HandleFunc("GET /rooms/template.csv", a.roomTemplate)
 	m.HandleFunc("GET /rooms/{id}", a.roomDetail)
+	m.HandleFunc("GET /rooms/{id}/photo", a.roomPhoto)
+	m.HandleFunc("POST /rooms/{id}/photo", a.roomPhoto)
 	m.HandleFunc("GET /rooms/{id}/contracts/{effective}/file", a.leaseDocument)
 	m.HandleFunc("POST /rooms/{id}/contracts/{effective}/file", a.leaseDocument)
 	m.HandleFunc("GET /bank", a.bankPage)
@@ -72,6 +74,12 @@ func (a *App) routes() http.Handler {
 			if strings.HasPrefix(r.URL.Path, "/cash/receipt/") {
 				r.Body = http.MaxBytesReader(w, r.Body, receiptBytes+4096)
 				err = r.ParseMultipartForm(receiptBytes + 4096)
+				if r.MultipartForm != nil {
+					defer r.MultipartForm.RemoveAll()
+				}
+			} else if strings.HasPrefix(r.URL.Path, "/rooms/") && strings.HasSuffix(r.URL.Path, "/photo") {
+				r.Body = http.MaxBytesReader(w, r.Body, roomPhotoBytes+4096)
+				err = r.ParseMultipartForm(roomPhotoBytes + 4096)
 				if r.MultipartForm != nil {
 					defer r.MultipartForm.RemoveAll()
 				}

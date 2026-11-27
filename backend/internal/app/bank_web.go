@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,8 @@ import (
 
 type BankScreen struct {
 	Account                      BankAccount
+	Options                      []BankOption
+	BankName                     string
 	Transfers                    []BankTransfer
 	Reviewed                     bool
 	Next, Previous               int
@@ -56,6 +59,12 @@ func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
 		offset = 0
 	}
 	screen := &BankScreen{Reviewed: query.Get("status") == "reviewed", Previous: max(0, offset-pageSize), HasPrevious: offset > 0}
+	options, err := a.store.bankOptions(r.Context())
+	if err != nil {
+		a.problem(w, r, err)
+		return
+	}
+	screen.Options = options
 	p := Page{Screen: "bank", Role: "owner", CSRF: csrf, Bank: screen}
 	if query.Get("saved") == "account" {
 		p.Message = "Đã lưu tài khoản nhận tiền."
@@ -68,8 +77,14 @@ func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
 	} else if query.Get("saved") == "review" {
 		p.Message = "Đã đối soát giao dịch."
 	}
-	err := a.store.book(r.Context(), org, false, func(b *Book) error {
+	err = a.store.book(r.Context(), org, false, func(b *Book) error {
 		screen.Account = b.Bank
+		for _, option := range options {
+			if option.BIN == b.Bank.BIN {
+				screen.BankName = option.Name
+				break
+			}
+		}
 		screen.MockAvailable = org == pilotOrg && len(a.mockBankSecret) >= 32 &&
 			b.Bank.BIN == mockBankBIN && b.Bank.Account == mockBankAccount
 		screen.MockAutoMatch = screen.MockAvailable && b.MockBankAutoMatch
@@ -154,6 +169,22 @@ func (a *App) bankAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	next := "/bank"
+	var bin string
+	if r.PathValue("operation") == "account" {
+		bin = strings.TrimSpace(r.Form.Get("bank"))
+		if bin == "" {
+			bin = strings.TrimSpace(r.Form.Get("bin"))
+		}
+		options, err := a.store.bankOptions(r.Context())
+		if err != nil {
+			a.problem(w, r, err)
+			return
+		}
+		if !slices.ContainsFunc(options, func(option BankOption) bool { return option.BIN == bin }) {
+			a.problem(w, r, inputError{fmt.Errorf("Hãy chọn ngân hàng trong danh sách.")})
+			return
+		}
+	}
 	err := a.store.book(r.Context(), org, true, func(b *Book) error {
 		switch r.PathValue("operation") {
 		case "mock-settings":
@@ -169,7 +200,7 @@ func (a *App) bankAction(w http.ResponseWriter, r *http.Request) {
 			if r.Form.Get("confirm") != "yes" {
 				return errInvalid
 			}
-			bank := BankAccount{strings.TrimSpace(r.Form.Get("bin")), strings.TrimSpace(r.Form.Get("account")), strings.TrimSpace(r.Form.Get("holder"))}
+			bank := BankAccount{bin, strings.TrimSpace(r.Form.Get("account")), strings.TrimSpace(r.Form.Get("holder"))}
 			if err := b.setBank(bank); err != nil {
 				return inputError{err}
 			}

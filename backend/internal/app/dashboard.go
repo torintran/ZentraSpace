@@ -80,7 +80,7 @@ func (b *Book) dashboard(period string) Dashboard {
 		if !readings[room.ID] {
 			d.Missing++
 		}
-		cell := dashboardRoom{Name: room.Name}
+		cell := dashboardRoom{Name: b.roomLabel(room)}
 		invoice, hasBill := bills[room.ID]
 		switch {
 		case hasBill && !invoice.Issued:

@@ -8,13 +8,17 @@ Bản chạy thử cục bộ cho chủ trọ một tòa. Luồng chính gồm c
 2. Chạy `docker compose up --build -d --wait`.
 3. Mở [ZentraSpace](http://localhost:8087/). Chọn **Chủ trọ** và dùng giá trị `ZS_OWNER_PASSWORD` trong tệp `.env`. Để thử vai trò **Nhân viên công tơ**, dùng `ZS_METER_PASSWORD`.
 
-Màn đăng nhập nhận tên tài khoản `owner` hoặc `meter` mặc định. Có thể cấp thêm tài khoản qua biến `ZS_STAFF_ACCOUNTS` chứa mảng JSON với các trường `Username`, `Organization`, `Role` và `Password`. Mỗi tên tài khoản gắn với một tổ chức và vai trò `owner` hoặc `meter`. Tổ chức khác có sổ phòng, công nợ và tài khoản ngân hàng riêng. Quản lý tài khoản tại cấu hình triển khai và dùng bí mật riêng cho từng tài khoản.
+Màn đăng nhập có hai lựa chọn mặc định **Chủ trọ** và **Nhân viên công tơ**. Chọn **Tài khoản khác** để nhập tên đăng nhập do người quản lý cấp. Có thể cấp thêm tài khoản qua biến `ZS_STAFF_ACCOUNTS` chứa mảng JSON với các trường `Username`, `Organization`, `Role` và `Password`. Mỗi tài khoản gắn với một tổ chức và vai trò `owner` hoặc `meter`. Tổ chức khác có sổ phòng, công nợ và tài khoản ngân hàng riêng.
 
 Để nạp dữ liệu giả lập cho kỳ 11/2026, chạy `docker compose exec web zentraspace seed-demo 2026-11` rồi mở **Tổng quan** và chọn kỳ đó. Bốn phòng `DEMO-` lần lượt có bảng kê đã thu đủ, đã thu một phần, đang nháp và chưa nhập công tơ. Chạy lại cùng kỳ giữ nguyên các phòng demo đã tạo. Lệnh nạp chỉ chạy ở chế độ HTTP cục bộ.
 
 Lệnh `docker compose exec web zentraspace seed-lease-demo 2026-11` bổ sung sáu phòng `HD-MAU-` với giá thuê và chỉ số giả lập, hợp đồng 6, 12 và 18 tháng, hai phòng ký lại, cùng bảng kê nhiều kỳ. Chạy lại cùng kỳ giữ nguyên dữ liệu demo đã tạo.
 
 Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để nhập một phòng hoặc dán CSV theo mẫu. Xem kết quả kiểm CSV trước khi lưu. Sang **Nhập điện nước** để ghi chỉ số cuối kỳ, sau đó vào **Chốt kỳ thu** để tạo bản nháp. Mở từng bảng kê, kiểm tiền và phát hành. Thao tác thu thiếu, thu dư, hoàn và ghi giảm đều có lịch sử. CSV công nợ tải được từ màn chốt kỳ.
+
+Dùng sidebar trên máy tính hoặc **Menu quản lý** trên điện thoại. Tạo **Dãy trọ** bằng tên, địa chỉ và số phòng tối đa, rồi chọn **Xem phòng** để tạo hoặc lọc phòng thuộc dãy. Nút **Mở bản đồ** dùng địa chỉ hoặc tọa độ đã lưu và mở OpenStreetMap. Phòng cũ có thể được gán dãy từ màn chỉnh sửa.
+
+Tạo **Mẫu giá và phí** để dùng lại tiền thuê, đơn giá điện nước và một khoản phí định kỳ. Khi gán mẫu, phòng nhận một bản sao các mức giá và phí. Phòng đặc biệt có thể nhập giá riêng hoặc thêm khoản thu riêng. Trong hồ sơ phòng, chủ trọ có thể lưu một ảnh JPG hoặc PNG tối đa 2 MB, ghi người ở cùng và ngày vào hoặc rời phòng. Ảnh được mã hóa theo tổ chức. **Lịch sử phòng** tổng hợp hợp đồng, thay đổi người ở, bảng kê, thu tiền và các giao dịch cọc đã ghi.
 
 Để sửa một khoản thu hoặc ghi giảm nhập sai, mở **Lịch sử giao dịch**, chọn **Đảo bút toán** và nhập lý do. Lịch sử giữ cả hai bút toán và mã tham chiếu chứng từ gốc. Khoản thu đã ghép sao kê cần kiểm tra lại giao dịch ngân hàng trước khi điều chỉnh.
 
@@ -35,6 +39,8 @@ Mở **Thu chi và cọc** để ghi chi theo danh mục, nhận hoặc hoàn c�
 Để thử chia sẻ, tạo link trên bảng kê đã phát hành. Mở link bằng một phiên trình duyệt riêng trên cùng máy và nhập mã dùng một lần. Trong bản chạy thử, chủ trọ trao mã thủ công qua kênh đã xác nhận với người thuê. Lời nhắc được sao chép không chứa mã hoặc số tiền. Có thể thu hồi link ngay cả khi người thuê đang có phiên xem.
 
 ## VietQR và đối soát sao kê
+
+Khi đặt tài khoản nhận tiền, chọn ngân hàng theo tên. PostgreSQL giữ danh mục tham chiếu được nạp khi chạy migration. Go tự tìm mã định danh và tạo VietQR. Danh mục hiện lấy từ ảnh chụp dữ liệu ngày 27/11/2026. [API danh mục VietQR](https://www.vietqr.io/api-bank)
 
 Chủ trọ mở **Đối soát ngân hàng**, nhập mã BIN, số tài khoản và tên chủ tài khoản đã kiểm tra. VietQR được tạo ngay trên máy chủ ZentraSpace và chỉ hiện trên bảng kê đã xác minh còn số tiền phải trả. Sau khi ghi thu một phần, mã dùng số tiền còn lại và giữ nguyên nội dung chuyển khoản của bảng kê. Khi đổi BIN hoặc số tài khoản, ứng dụng thu hồi link cũ. Kiểm tên thụ hưởng trên ứng dụng ngân hàng trước khi xác nhận bất kỳ chuyển khoản thật nào. [Chuyển nhanh qua VietQR của NAPAS](https://napas.com.vn/dich-vu-chuyen-tien-nhanh-napas-247)
 

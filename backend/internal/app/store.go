@@ -122,8 +122,32 @@ func migrate(ctx context.Context) error {
  USING (organization = current_setting('app.organization', true))
  WITH CHECK (organization = current_setting('app.organization', true));
  REVOKE ALL ON lease_documents FROM PUBLIC;
- GRANT SELECT, INSERT ON lease_documents TO zentra_runtime;`)
-	return err
+ GRANT SELECT, INSERT ON lease_documents TO zentra_runtime;
+ CREATE TABLE IF NOT EXISTS room_photos (
+  organization text NOT NULL REFERENCES books(organization),
+  room_id text NOT NULL,
+  sealed bytea NOT NULL,
+  PRIMARY KEY (organization, room_id)
+ );
+ ALTER TABLE room_photos ENABLE ROW LEVEL SECURITY;
+ ALTER TABLE room_photos FORCE ROW LEVEL SECURITY;
+ DROP POLICY IF EXISTS organization_scope ON room_photos;
+ CREATE POLICY organization_scope ON room_photos TO zentra_runtime
+ USING (organization = current_setting('app.organization', true))
+ WITH CHECK (organization = current_setting('app.organization', true));
+ REVOKE ALL ON room_photos FROM PUBLIC;
+ GRANT SELECT, INSERT, UPDATE ON room_photos TO zentra_runtime;
+ CREATE TABLE IF NOT EXISTS bank_catalog (
+  bin text PRIMARY KEY,
+  code text NOT NULL,
+  name text NOT NULL
+ );
+ REVOKE ALL ON bank_catalog FROM PUBLIC;
+ GRANT SELECT ON bank_catalog TO zentra_runtime;`)
+	if err != nil {
+		return err
+	}
+	return seedBankCatalog(ctx, admin)
 }
 
 func (s *Store) withOrganizationTx(ctx context.Context, org string, run func(pgx.Tx) error) error {

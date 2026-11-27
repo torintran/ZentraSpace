@@ -63,10 +63,15 @@ func (b *Book) calculateInvoice(room Room, reading Reading, id string) Invoice {
 	active := b.leaseAt(room, reading.Period)
 	room.Rent, room.ElectricRate, room.WaterRate = active.Rent, active.ElectricRate, active.WaterRate
 	invoice := calculate(room, reading, id)
+	invoice.RoomName = b.roomLabel(room)
 	invoice.LeaseEffective, invoice.LeaseTenant = active.Effective, active.Tenant
 	settings := b.Billing[reading.Period]
 	invoice.DueDate, invoice.CommonFeeLabel, invoice.CommonFee = settings.DueDate, settings.CommonFeeLabel, settings.CommonFee
 	invoice.Total += invoice.CommonFee
+	if room.PolicyFee > 0 {
+		invoice.RoomFees = append(invoice.RoomFees, FeeLine{Label: room.PolicyFeeLabel, Amount: room.PolicyFee})
+		invoice.Total += room.PolicyFee
+	}
 	for _, fee := range b.RoomFees {
 		if fee.RoomID == room.ID && fee.applies(reading.Period) {
 			invoice.RoomFees = append(invoice.RoomFees, FeeLine{Label: fee.Label, Amount: fee.Amount})

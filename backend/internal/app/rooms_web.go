@@ -25,6 +25,10 @@ func (a *App) roomDetail(w http.ResponseWriter, r *http.Request) {
 		p.Message = "Đã lưu khoản phí."
 	} else if r.URL.Query().Get("saved") == "document" {
 		p.Message = "Đã lưu tệp hợp đồng."
+	} else if r.URL.Query().Get("saved") == "resident" {
+		p.Message = "Đã cập nhật người ở."
+	} else if r.URL.Query().Get("saved") == "photo" {
+		p.Message = "Đã lưu ảnh phòng."
 	}
 	if err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
 		p.RoomDetail = b.room(r.PathValue("id"))
@@ -34,6 +38,16 @@ func (a *App) roomDetail(w http.ResponseWriter, r *http.Request) {
 		p.LockOpening, p.LockRates = b.roomLocks(p.RoomDetail.ID)
 		p.Lease = b.leaseAt(*p.RoomDetail, p.Period)
 		p.LeaseHistory = b.leaseHistory(*p.RoomDetail)
+		p.PolicyMutable = p.RoomDetail.Prepared && len(p.LeaseHistory) == 0 && !p.LockRates
+		p.Residents = b.roomResidents(*p.RoomDetail, p.Period)
+		p.RoomTimeline = b.roomTimeline(*p.RoomDetail)
+		p.Sites, p.Policies = b.siteViews(p.Period), b.Policies
+		for _, site := range p.Sites {
+			if site.ID == p.RoomDetail.SiteID {
+				p.RoomSite = &site
+				break
+			}
+		}
 		for _, fee := range b.RoomFees {
 			if fee.RoomID == p.RoomDetail.ID {
 				p.RoomFees = append(p.RoomFees, fee)
@@ -58,6 +72,12 @@ func (a *App) roomDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		p.LeaseDocuments = documents
 	}
+	photos, err := a.store.photoRooms(r.Context(), s.organization)
+	if err != nil {
+		a.problem(w, r, err)
+		return
+	}
+	p.HasPhoto = photos[p.RoomDetail.ID]
 	a.page(w, r, p)
 }
 

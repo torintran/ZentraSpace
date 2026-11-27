@@ -55,7 +55,7 @@ func (b *Book) importRooms(period, data string, commit bool) (ImportPreview, err
 		same := false
 		for _, rooms := range [][]Room{b.Rooms, additions} {
 			for _, saved := range rooms {
-				if !strings.EqualFold(saved.Name, room.Name) {
+				if saved.SiteID != room.SiteID || !strings.EqualFold(saved.Name, room.Name) {
 					continue
 				}
 				room.ID = saved.ID

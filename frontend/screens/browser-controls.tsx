@@ -13,7 +13,11 @@ export function LoginPassword() {
       autoComplete="current-password"
       maxLength={72}
       visibilityToggleIcon={({ reveal }) =>
-        reveal ? <EyeOff aria-hidden size={18} /> : <Eye aria-hidden size={18} />
+        reveal ? (
+          <EyeOff aria-hidden size={18} />
+        ) : (
+          <Eye aria-hidden size={18} />
+        )
       }
       visibilityToggleButtonProps={{ 'aria-label': 'Hiện hoặc ẩn mật khẩu' }}
       visibilityToggleFocusable
@@ -43,9 +47,11 @@ export function RoomList({
         value={value}
         onChange={(event) => setValue(event.currentTarget.value)}
       />
-      {visible.map((room) => (
-        <div key={room.id}>{room.row}</div>
-      ))}
+      <div className="room-cards">
+        {visible.map((room) => (
+          <div key={room.id}>{room.row}</div>
+        ))}
+      </div>
       {visible.length === 0 && (
         <p role="status" className="subtle">
           Không tìm thấy phòng.

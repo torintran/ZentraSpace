@@ -4,6 +4,8 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"net/url"
+	"slices"
 	"strings"
 	"time"
 )
@@ -51,6 +53,42 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 		value := func(key string) string { return strings.TrimSpace(r.Form.Get(key)) }
 		id := value("id")
 		switch action {
+		case "site":
+			capacity, err := number(r, "capacity", 1, 150)
+			if err != nil {
+				return err
+			}
+			if err := b.addSite(Site{Name: value("name"), Address: value("address"), Coordinates: value("coordinates"), Capacity: int(capacity)}); err != nil {
+				return inputError{err}
+			}
+			next = "/?tab=sites&saved=1&period=" + period
+		case "policy":
+			rent, e1 := number(r, "rent", 0, 100000000)
+			electric, e2 := number(r, "electricRate", 0, 100000)
+			water, e3 := number(r, "waterRate", 0, 1000000)
+			fee, e4 := number(r, "fee", 0, 100000000)
+			if err := errors.Join(e1, e2, e3, e4); err != nil {
+				return errInvalid
+			}
+			if err := b.addPolicy(RoomPolicy{Name: value("name"), Rent: rent, ElectricRate: electric, WaterRate: water, Fee: fee, FeeLabel: value("feeLabel")}); err != nil {
+				return inputError{err}
+			}
+			next = "/?tab=policies&saved=1&period=" + period
+		case "resident", "resident-out":
+			room := b.room(id)
+			if room == nil {
+				return errMissing
+			}
+			var err error
+			if action == "resident-out" {
+				err = b.endResidency(id, value("resident"), value("leftOn"))
+			} else {
+				err = b.addResident(room, period, Resident{Name: value("name"), Phone: value("phone"), JoinedOn: value("joinedOn")})
+			}
+			if err != nil {
+				return inputError{err}
+			}
+			next = "/rooms/" + id + "?saved=resident&period=" + period + "#room-residents"
 		case "cash-entry":
 			amount, err := number(r, "amount", 1, 100000000000)
 			if err != nil {
@@ -115,11 +153,12 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			next = "/?tab=rooms&saved=1&period=" + period
 		case "room", "room-edit":
 			next = "/?tab=rooms&saved=1&period=" + period
-			room := Room{Name: value("name"), Tenant: value("tenant"), Start: period}
-			if room.Name == "" || len(room.Name) > 60 || len(room.Tenant) > 150 {
+			room := Room{Name: value("name"), Tenant: value("tenant"), Start: period, SiteID: value("site"), Description: value("description")}
+			if room.Name == "" || len(room.Name) > 60 || len(room.Tenant) > 150 || len(room.Description) > 1000 {
 				return errInvalid
 			}
 			var lockOpening, lockRates bool
+			policyMutable := true
 			if action == "room-edit" {
 				current := b.room(id)
 				if current == nil {
@@ -127,6 +166,13 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				}
 				room.ID, room.Start = current.ID, current.Start
 				room.Prepared = current.Prepared
+				room.PolicyID, room.PolicyFee, room.PolicyFeeLabel = current.PolicyID, current.PolicyFee, current.PolicyFeeLabel
+				if !r.Form.Has("site") {
+					room.SiteID = current.SiteID
+				}
+				if !r.Form.Has("description") {
+					room.Description = current.Description
+				}
 				if room.Prepared {
 					room.Tenant = ""
 				}
@@ -134,6 +180,7 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				room.Rent, room.ElectricRate, room.WaterRate = current.Rent, current.ElectricRate, current.WaterRate
 				room.Electric, room.Water = current.Electric, current.Water
 				lockOpening, lockRates = b.roomLocks(id)
+				policyMutable = current.Prepared && len(b.leaseHistory(*current)) == 0 && !lockRates
 				if lockRates {
 					room.Tenant = current.Tenant
 				}
@@ -149,7 +196,21 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				}
 				room.LeaseMonths = int(months)
 			}
-			if !lockRates {
+			if policyMutable && r.Form.Has("policy") {
+				room.PolicyID, room.PolicyFee, room.PolicyFeeLabel = "", 0, ""
+				if selected := value("policy"); selected != "" {
+					index := slices.IndexFunc(b.Policies, func(policy RoomPolicy) bool { return policy.ID == selected })
+					if index < 0 {
+						return errMissing
+					}
+					policy := b.Policies[index]
+					room.PolicyID, room.PolicyFee, room.PolicyFeeLabel = policy.ID, policy.Fee, policy.FeeLabel
+					room.Rent, room.ElectricRate, room.WaterRate = policy.Rent, policy.ElectricRate, policy.WaterRate
+				}
+			} else if !policyMutable && r.Form.Has("policy") {
+				return inputError{errors.New("Mẫu giá áp dụng khi chuẩn bị phòng. Với phòng đã có hợp đồng, hãy thêm điều khoản cho kỳ mới.")}
+			}
+			if !lockRates && (!policyMutable || !r.Form.Has("policy") || room.PolicyID == "") {
 				var e1, e2, e3 error
 				room.Rent, e1 = number(r, "rent", 0, 100000000)
 				room.ElectricRate, e2 = number(r, "electricRate", 0, 100000)
@@ -168,6 +229,9 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			}
 			if action == "room" && room.Tenant == "" {
 				room.Prepared, room.LeaseMonths = true, 0
+			}
+			if action == "room" && room.SiteID != "" {
+				next += "&site=" + url.QueryEscape(room.SiteID)
 			}
 			if err := b.saveRoom(room, value("revision")); err != nil {
 				return inputError{err}
