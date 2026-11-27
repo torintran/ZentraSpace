@@ -199,3 +199,6 @@ main.layout {
 @media (max-width: 480px) {
   .site-footer-identity { flex-direction: column; align-items: flex-start; }
 }
+.meter-special{margin:0 0 12px;padding:0 12px 8px;border:1px solid var(--line);border-radius:11px}
+.meter-special fieldset{margin:0;padding:8px 12px 12px;min-inline-size:0;border:1px solid var(--line);border-radius:9px}
+.meter-special .form{margin-bottom:8px}

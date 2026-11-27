@@ -73,7 +73,7 @@ func (b *Book) dashboard(period string) Dashboard {
 		d.TrendMax = max(d.TrendMax, m.Collected, m.Due)
 	}
 	for _, room := range b.Rooms {
-		if room.Start > period {
+		if !b.leaseAt(room, period).ActiveAt(period) {
 			continue
 		}
 		d.Rooms++

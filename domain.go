@@ -20,6 +20,7 @@ type Room struct {
 type Reading struct {
 	RoomID, Period                                         string
 	ElectricBefore, WaterBefore, ElectricAfter, WaterAfter int64
+	Adjustment                                             MeterAdjustment
 }
 type Invoice struct {
 	ID, RoomID, RoomName, Period                                      string
@@ -204,58 +205,9 @@ func (b *Book) reading(room, period string) *Reading {
 	return nil
 }
 
-func (b *Book) read(id, period string, electric, water int64) error {
-	room := b.room(id)
-	if room == nil {
-		return errMissing
-	}
-	start, err := time.Parse("2006-01", period)
-	if err != nil || period < room.Start {
-		return errInvalid
-	}
-	beforeE, beforeW := room.Electric, room.Water
-	if period != room.Start {
-		previous := start.AddDate(0, -1, 0).Format("2006-01")
-		var last *Invoice
-		for j := range b.Invoices {
-			i := &b.Invoices[j]
-			if i.RoomID == id && i.Period == previous && i.Issued {
-				last = i
-				break
-			}
-		}
-		if last == nil {
-			return errors.New("Hãy phát hành bảng kê của kỳ trước để chốt chỉ số đầu kỳ.")
-		}
-		beforeE, beforeW = last.Reading.ElectricAfter, last.Reading.WaterAfter
-	}
-	if electric < beforeE || water < beforeW || electric > 999999 || water > 999999 {
-		return errors.New("Chỉ số mới phải từ chỉ số đầu kỳ đến 999.999.")
-	}
-	for j := range b.Invoices {
-		i := &b.Invoices[j]
-		if i.RoomID == id && i.Period == period && i.Issued {
-			return errLocked
-		}
-	}
-	r := Reading{id, period, beforeE, beforeW, electric, water}
-	if prior := b.reading(id, period); prior != nil {
-		*prior = r
-	} else {
-		b.Readings = append(b.Readings, r)
-	}
-	for j := range b.Invoices {
-		i := &b.Invoices[j]
-		if i.RoomID == id && i.Period == period && !i.Issued {
-			*i = b.calculateInvoice(*room, r, i.ID)
-		}
-	}
-	return nil
-}
-
 func calculate(r Room, reading Reading, id string) Invoice {
-	electric := (reading.ElectricAfter - reading.ElectricBefore) * r.ElectricRate
-	water := (reading.WaterAfter - reading.WaterBefore) * r.WaterRate
+	electric := reading.ElectricUsage() * r.ElectricRate
+	water := reading.WaterUsage() * r.WaterRate
 	return Invoice{ID: id, RoomID: r.ID, RoomName: r.Name, Period: reading.Period, Rent: r.Rent,
 		ElectricRate: r.ElectricRate, WaterRate: r.WaterRate, ElectricAmount: electric,
 		WaterAmount: water, Total: r.Rent + electric + water, Reading: reading}
@@ -308,11 +260,11 @@ func (b *Book) issue(id string) error {
 }
 
 func (i Invoice) Revision() string {
-	return hash(fmt.Sprintf("%q %q %q %q %q %q %q %q %d %d %d %d %d %d %d %d %d %d %d %#v",
+	return hash(fmt.Sprintf("%q %q %q %q %q %q %q %q %d %d %d %d %d %d %d %d %d %d %d %#v %#v",
 		i.ID, i.RoomID, i.RoomName, i.Period, i.LeaseEffective, i.LeaseTenant, i.DueDate, i.CommonFeeLabel,
 		i.CommonFee, i.Rent, i.ElectricRate, i.WaterRate,
 		i.ElectricAmount, i.WaterAmount, i.Total, i.Reading.ElectricBefore,
-		i.Reading.ElectricAfter, i.Reading.WaterBefore, i.Reading.WaterAfter, i.RoomFees))
+		i.Reading.ElectricAfter, i.Reading.WaterBefore, i.Reading.WaterAfter, i.RoomFees, i.Reading.Adjustment))
 }
 
 func (i Invoice) NetCollected() int64 { collected, _ := i.totals(); return collected }

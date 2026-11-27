@@ -228,3 +228,34 @@ if ($SecondOwnerPassword) {
     $request = Open-Page $secondReader "/p/$invite"
     Assert-That (!$request.Content.Contains('2.159.000')) 'tenant session cannot cross between organizations'
 }
+
+$handoverRoom = "Handover-" + [Guid]::NewGuid().ToString('N').Substring(0,8)
+$request = Open-Page $owner '/action/room' @{csrf=$csrf;period='2026-08';name=$handoverRoom;tenant='Hợp đồng trước';rent='2000000';electricRate='3000';waterRate='15000';electric='50';water='5';months='1'}
+$row = [regex]::Matches($request.Content,'(?s)<article class="list-row"[^>]*>.*?</article>') | Where-Object {$_.Value.Contains("<strong>$handoverRoom</strong>")} | Select-Object -First 1
+$handoverID = Get-Match $row.Value '/rooms/([a-f0-9]{48})'
+$request = Open-Page $owner '/?tab=meters&period=2026-09'
+Assert-That (!$request.Content.Contains($handoverRoom)) 'vacant month excluded from meter queue'
+$request = Open-Page $owner '/action/lease' @{csrf=$csrf;id=$handoverID;effective='2026-10';tenant='Hợp đồng mới';rent='2000000';electricRate='3000';waterRate='15000'}
+Assert-That ($request.Content.Contains('Hợp đồng mới')) 'new lease scheduled after vacancy'
+$reading = @{csrf=$csrf;id=$handoverID;period='2026-10';electric='7';water='15';handover='yes';openingElectric='100';openingWater='10';electricReplaced='yes';electricOldEnd='110';electricNewStart='0';reason='Nội bộ - biên bản công tơ'}
+$reading.csrf = $meterCsrf
+$request = Open-Page $meter '/action/read-special' $reading
+Assert-That ($request.StatusCode -eq 403) 'meter staff cannot alter handover or replacement'
+$reading.csrf = $csrf
+$request = Open-Page $owner '/action/read-special' $reading
+Assert-That ($request.StatusCode -eq 200 -and $request.Content.Contains('Đã lưu.')) 'owner records handover and replacement'
+$request = Open-Page $owner '/action/draft' @{csrf=$csrf;period='2026-10'}
+$row = [regex]::Matches($request.Content,'(?s)<article class="list-row"[^>]*>.*?</article>') | Where-Object {$_.Value.Contains("<strong>$handoverRoom</strong>")} | Select-Object -First 1
+$handoverInvoice = Get-Match $row.Value '/invoice/([a-f0-9]{48})'
+$request = Open-Page $owner "/invoice/$handoverInvoice"
+Assert-That ($request.Content.Contains('2.126.000') -and $request.Content.Contains('Cũ 100') -and $request.Content.Contains('Mới 0')) 'invoice explains and charges both meter segments'
+$revision = Get-Match $request.Content 'name="revision" value="([a-f0-9]+)"'
+$null = Open-Page $owner '/action/issue' @{csrf=$csrf;id=$handoverInvoice;revision=$revision}
+$request = Open-Page $owner '/action/read-special' $reading
+Assert-That ($request.StatusCode -eq 422 -and $request.Content.Contains('Kỳ này đã phát hành')) 'issued invoice locks handover and replacement'
+$request = Open-Page $owner '/action/invite' @{csrf=$csrf;id=$handoverInvoice}
+$handoverInvite = Get-Match $request.Content '/p/([a-f0-9]{48})'
+$handoverCode = Get-Match $request.Content '<strong>([0-9]{8})</strong>'
+$handoverReader = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$request = Open-Page $handoverReader "/p/$handoverInvite" @{code=$handoverCode}
+Assert-That ($request.Content.Contains('Cũ 100') -and $request.Content.Contains('Mới 0') -and !$request.Content.Contains($reading.reason)) 'tenant sees meter segments without internal note'

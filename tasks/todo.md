@@ -1,6 +1,6 @@
 # Backlog triển khai ZentraSpace
 
-Trạng thái ngày 26/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. Cột **Nghiệm thu và kiểm tra** mô tả bằng chứng cần có khi đóng việc. Tên thư mục và contract là dự kiến theo [kế hoạch](plan.md).
+Trạng thái ngày 27/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. Cột **Nghiệm thu và kiểm tra** mô tả bằng chứng cần có khi đóng việc. Tên thư mục và contract là dự kiến theo [kế hoạch](plan.md).
 
 **Bản chạy thử cục bộ đã có.** Docker kiểm được luồng phòng, import CSV, công tơ, bảng kê, ghi thu, xuất công nợ và link xác minh. Đã kiểm quyền tài khoản công tơ, RLS ở PostgreSQL và khôi phục bản dump dữ liệu mã hóa vào DB khác. Các ô dưới đây theo dõi mức nghiệm thu pilot đầy đủ. Thử nghiệm với chủ trọ/người thuê thật, HTTPS và kênh gửi mã tự động vẫn nằm ngoài xác minh cục bộ. [Hướng dẫn chạy và kiểm thử](../README.md)
 
@@ -29,9 +29,9 @@ Trạng thái ngày 26/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. C
 | F01 | [x] Tạo môi trường phát triển tối thiểu | G03 | Docker dựng web Go và PostgreSQL từ DB trống. CI cấu hình chạy Go test, build, migration và smoke test HTTP với dữ liệu tổng hợp. |
 | F02 | [ ] Đăng nhập và cô lập tổ chức | F01 | Đã gắn tài khoản với sổ theo tổ chức và kiểm hai chủ trọ qua phòng, bảng kê, CSV, ghi thu, ngân hàng và link riêng. Còn quyền nhiều tòa trong một tổ chức, quản trị tài khoản và audit truy cập hỗ trợ. |
 | F03 | [ ] Quản lý tòa và danh sách phòng | F02 | Tạo một tòa, lưu mã phòng duy nhất trong tòa, hiển thị và tìm phòng trên điện thoại. Test retry/validation và truy cập chéo org. |
-| F04 | [ ] Ghi hợp đồng và đại diện | F03 | Đã có lịch điều khoản theo tháng với người đại diện và đơn giá, giữ nguyên bảng kê đã phát hành. Còn ngày vào/ra giữa tháng, khoảng trống, hợp đồng liên tiếp và tính theo ngày với phân đoạn công tơ. |
+| F04 | [ ] Ghi hợp đồng và đại diện | F03 | Đã có lịch điều khoản theo tháng, ký lại, và bắt đầu hợp đồng sau tháng trống bằng chỉ số bàn giao. Còn ngày vào/ra giữa tháng và tính theo ngày với phân đoạn công tơ. |
 | F05 | [ ] Chuyển dữ liệu đầu kỳ có hỗ trợ | F04 | Nhập bảng do pilot cung cấp, báo lỗi từng dòng, đối chiếu số phòng/hợp đồng/chỉ số/số dư mở. Chạy lại cùng lần nhập giữ số bản ghi; lưu biên bản đối chiếu. |
-| F06 | [ ] Nhập và xác nhận điện nước | F04 | Ghi mốc đọc, số trước/sau theo phòng, người duyệt, căn cứ đơn giá và mã công tơ. Thử số lùi, thay công tơ và chênh giữa meter tổng/meter phòng. Gắn lý do khi giữ khoản cần đối chiếu. |
+| F06 | [ ] Nhập và xác nhận điện nước | F04 | Chủ trọ ghi mốc bàn giao hoặc thay một công tơ mỗi loại trong kỳ có lý do. Bảng kê tách số cũ/mới và khóa khi phát hành. Còn mã/định danh công tơ, ghi nhận người duyệt và hàng chờ chênh giữa công tơ tổng và phòng. |
 | F07 | [ ] Tính và tạo lô bảng kê nháp | F04, F06 | Đã tính kỳ đủ bằng VND nguyên, có phí chung và phí riêng từng phòng thu một lần hoặc hằng tháng. Còn tính kỳ lẻ và trạng thái chờ xử lý chênh lệch công tơ. |
 | F08 | [x] Phát hành bất biến | F07 | Bản xem trước được kiểm phiên bản trong transaction phát hành. Kiểm phát hành đồng thời, bỏ qua phòng thiếu chỉ số và khóa chỉ số của bảng kê đã phát hành. |
 | F14 | [ ] Xem bảng kê riêng sau xác minh | F08, G05 | Link có hạn/thu hồi và cần xác minh qua kênh đã đăng ký. Test chuyển tiếp, đọc sai phòng, hết hạn và thu hồi khi đã mở phiên. Người thuê đã xác minh đọc được mốc điện nước, cách tính, tổng và hạn trên web di động. |

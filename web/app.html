@@ -157,6 +157,7 @@
 <a href="/?tab=meters&amp;period={{.Period}}&amp;filter=missing"{{if eq .Filter "missing"}} class="active" aria-current="page"{{end}}>Thiếu chỉ số</a>
 </nav>
 {{range .Rooms}}
+{{if or (not .Handover) .Done}}
 <form class="meter-row" method="post" action="/action/read">
 <input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="period" value="{{$.Period}}"><input type="hidden" name="id" value="{{.ID}}">
 {{if $.Filter}}<input type="hidden" name="filter" value="{{$.Filter}}">{{end}}
@@ -165,6 +166,46 @@
 <label>Nước (m³)<input type="number" name="water" inputmode="numeric" min="0" max="999999" value="{{if .Done}}{{.Water}}{{end}}" placeholder="{{.Water}}" required></label>
 <button>Lưu chỉ số</button>
 </form>
+{{else}}
+<div class="list-row"><strong>{{.Name}}</strong><span class="badge">Cần chỉ số bàn giao đầu kỳ</span></div>
+{{end}}
+{{if eq $.Role "owner"}}
+<details class="meter-special"{{if and .Handover (not .Done)}} open{{end}}>
+<summary>{{if .Handover}}Chỉ số bàn giao và cuối kỳ · {{.Name}}{{else}}Thay công tơ trong kỳ · {{.Name}}{{end}}</summary>
+<form method="post" action="/action/read-special" class="form">
+<input type="hidden" name="csrf" value="{{$.CSRF}}"><input type="hidden" name="period" value="{{$.Period}}"><input type="hidden" name="id" value="{{.ID}}">
+{{if $.Filter}}<input type="hidden" name="filter" value="{{$.Filter}}">{{end}}
+{{if .Handover}}
+<input type="hidden" name="handover" value="yes">
+<p class="subtle">Nhập chỉ số tại lúc bàn giao. Điện nước phát sinh khi phòng trống không cộng vào kỳ thuê này.</p>
+<div class="pair">
+<label>Điện lúc bàn giao<input name="openingElectric" type="number" min="0" max="999999" inputmode="numeric" value="{{if .Done}}{{.Adjustment.OpeningElectric}}{{end}}" required></label>
+<label>Nước lúc bàn giao<input name="openingWater" type="number" min="0" max="999999" inputmode="numeric" value="{{if .Done}}{{.Adjustment.OpeningWater}}{{end}}" required></label>
+</div>
+{{end}}
+<fieldset class="form"><legend>Công tơ điện</legend>
+<label class="check"><input type="checkbox" name="electricReplaced" value="yes"{{if .Adjustment.Electric.Replaced}} checked{{end}}> Có thay công tơ điện</label>
+<div class="pair">
+<label>Số cuối công tơ điện cũ<input name="electricOldEnd" type="number" min="0" max="999999" inputmode="numeric" value="{{if .Adjustment.Electric.Replaced}}{{.Adjustment.Electric.OldEnd}}{{end}}"></label>
+<label>Số đầu công tơ điện mới<input name="electricNewStart" type="number" min="0" max="999999" inputmode="numeric" value="{{if .Adjustment.Electric.Replaced}}{{.Adjustment.Electric.NewStart}}{{end}}"></label>
+</div>
+</fieldset>
+<fieldset class="form"><legend>Công tơ nước</legend>
+<label class="check"><input type="checkbox" name="waterReplaced" value="yes"{{if .Adjustment.Water.Replaced}} checked{{end}}> Có thay công tơ nước</label>
+<div class="pair">
+<label>Số cuối công tơ nước cũ<input name="waterOldEnd" type="number" min="0" max="999999" inputmode="numeric" value="{{if .Adjustment.Water.Replaced}}{{.Adjustment.Water.OldEnd}}{{end}}"></label>
+<label>Số đầu công tơ nước mới<input name="waterNewStart" type="number" min="0" max="999999" inputmode="numeric" value="{{if .Adjustment.Water.Replaced}}{{.Adjustment.Water.NewStart}}{{end}}"></label>
+</div>
+</fieldset>
+<div class="pair">
+<label>Số điện cuối kỳ<input name="electric" type="number" min="0" max="999999" inputmode="numeric" value="{{if .Done}}{{.Electric}}{{end}}" required></label>
+<label>Số nước cuối kỳ<input name="water" type="number" min="0" max="999999" inputmode="numeric" value="{{if .Done}}{{.Water}}{{end}}" required></label>
+</div>
+<label>Lý do hoặc tham chiếu biên bản<input name="reason" maxlength="240" value="{{.Adjustment.Reason}}" required></label>
+<button>Lưu chỉ số và biên bản</button>
+</form>
+</details>
+{{end}}
 {{else}}<p class="subtle">{{if eq .Filter "missing"}}Không có phòng thiếu chỉ số trong kỳ này.{{else}}Chưa có phòng để nhập chỉ số.{{end}}</p>{{end}}
 </section>
 {{else}}
@@ -571,8 +612,8 @@
 <h2>Chi tiết khoản thu</h2>
 <dl class="charges">
 <div><dt>Tiền thuê</dt><dd>{{money .Rent}}</dd></div>
-<div><dt>Điện <small>{{.Reading.ElectricBefore}} → {{.Reading.ElectricAfter}} kWh · {{money .ElectricRate}}/kWh</small></dt><dd>{{money .ElectricAmount}}</dd></div>
-<div><dt>Nước <small>{{.Reading.WaterBefore}} → {{.Reading.WaterAfter}} m³ · {{money .WaterRate}}/m³</small></dt><dd>{{money .WaterAmount}}</dd></div>
+<div><dt>Điện <small>{{if .Reading.Adjustment.Electric.Replaced}}Cũ {{.Reading.ElectricBefore}} → {{.Reading.Adjustment.Electric.OldEnd}} · Mới {{.Reading.Adjustment.Electric.NewStart}} → {{.Reading.ElectricAfter}}{{else}}{{if .Reading.Adjustment.Handover}}Bàn giao {{end}}{{.Reading.ElectricBefore}} → {{.Reading.ElectricAfter}}{{end}} · {{.Reading.ElectricUsage}} kWh × {{money .ElectricRate}}/kWh</small></dt><dd>{{money .ElectricAmount}}</dd></div>
+<div><dt>Nước <small>{{if .Reading.Adjustment.Water.Replaced}}Cũ {{.Reading.WaterBefore}} → {{.Reading.Adjustment.Water.OldEnd}} · Mới {{.Reading.Adjustment.Water.NewStart}} → {{.Reading.WaterAfter}}{{else}}{{if .Reading.Adjustment.Handover}}Bàn giao {{end}}{{.Reading.WaterBefore}} → {{.Reading.WaterAfter}}{{end}} · {{.Reading.WaterUsage}} m³ × {{money .WaterRate}}/m³</small></dt><dd>{{money .WaterAmount}}</dd></div>
 {{if .CommonFee}}<div><dt>{{.CommonFeeLabel}}</dt><dd>{{money .CommonFee}}</dd></div>{{end}}
 {{range .RoomFees}}<div><dt>{{.Label}}</dt><dd>{{money .Amount}}</dd></div>{{end}}
 <div><dt>Tổng bảng kê</dt><dd>{{money .Total}}</dd></div>

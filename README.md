@@ -20,6 +20,8 @@ Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để n
 
 Để đổi người đại diện hoặc đơn giá cho tháng sau, mở **Phòng và hợp đồng → Xem chi tiết → Thêm điều khoản**. Điều khoản có hiệu lực từ ngày đầu tháng đã chọn. Bảng kê nháp dùng điều khoản của kỳ tương ứng. Bảng kê đã phát hành giữ nguyên nội dung.
 
+Phòng không có hợp đồng hiệu lực được bỏ khỏi hàng chờ chốt chỉ số. Nếu cho thuê lại sau một kỳ trống, Chủ trọ nhập số lúc bàn giao và số cuối kỳ trong **Nhập điện nước**. Nếu thay công tơ điện hoặc nước giữa kỳ, ghi số cuối công tơ cũ, số đầu công tơ mới, số cuối kỳ và lý do. Bảng kê cho thấy sản lượng của hai đoạn cộng lại. Lý do lưu trong màn quản lý và chỉ số đã phát hành được khóa.
+
 Trong **Chốt kỳ thu**, mở **Hạn thanh toán và phí chung** để đặt hạn thu và một khoản phí chung cho từng phòng. Bảng kê hiển thị khoản phí thành dòng riêng. Thay đổi chỉ áp dụng cho bảng kê chưa phát hành. Khi thu tiền, chọn tiền mặt hoặc chuyển khoản và nhập mã chứng từ nếu có.
 
 Để thêm Wi‑Fi, phụ thu hoặc khoản thu riêng, mở **Xem chi tiết phòng → Phí riêng của phòng**. Chọn thu một lần hoặc hằng tháng và kỳ bắt đầu. Có thể dừng phí hằng tháng từ một kỳ chưa phát hành. Người thuê thấy từng khoản, số đã thu, số còn lại và VietQR trong trang bảng kê sau xác minh.

@@ -44,10 +44,12 @@ const pilotOrg = "local-pilot"
 
 type RoomView struct {
 	Room
-	Done     bool
-	Lease    LeaseTerms
-	HasLease bool
-	Renewed  bool
+	Done       bool
+	Lease      LeaseTerms
+	HasLease   bool
+	Renewed    bool
+	Handover   bool
+	Adjustment MeterAdjustment
 }
 type Page struct {
 	Screen, Role, Tab, Period, Error, Message, CSRF, InviteID, ShareURL, Code string
@@ -375,16 +377,16 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			p.BillingSettings = b.Billing[period]
 		}
 		for _, room := range b.Rooms {
-			var lease LeaseTerms
+			lease := b.leaseAt(room, period)
 			var renewed bool
-			done := b.reading(room.ID, period) != nil
-			if ((tab == "meters" || tab == "billing") && room.Start > period) || (filter == "missing" && done) {
+			reading := b.reading(room.ID, period)
+			done := reading != nil
+			if ((tab == "meters" || tab == "billing") && !lease.ActiveAt(period)) || (filter == "missing" && done) {
 				continue
 			}
 			if s.role == "meter" {
 				room = Room{ID: room.ID, Name: room.Name, Start: room.Start, Electric: room.Electric, Water: room.Water}
 			} else if tab == "rooms" && room.Start <= period {
-				lease = b.leaseAt(room, period)
 				if lease.ActiveAt(period) {
 					room.Tenant = lease.Tenant
 					renewed = lease.Renewal
@@ -392,21 +394,22 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 					room.Tenant = ""
 				}
 			}
-			if reading := b.reading(room.ID, period); reading != nil {
-				room.Electric = reading.ElectricAfter
-				room.Water = reading.WaterAfter
-			} else if prev, err := time.Parse("2006-01", period); err == nil {
-				previous := prev.AddDate(0, -1, 0).Format("2006-01")
-				for _, inv := range b.Invoices {
-					if inv.RoomID == room.ID && inv.Issued && inv.Period == previous {
-						room.Electric = inv.Reading.ElectricAfter
-						room.Water = inv.Reading.WaterAfter
-						break
+			view := RoomView{Room: room, Done: done, HasLease: lease.ActiveAt(period), Renewed: renewed}
+			if tab == "rooms" {
+				view.Lease = lease
+			}
+			if tab == "meters" {
+				if reading != nil {
+					view.Electric, view.Water = reading.ElectricAfter, reading.WaterAfter
+					view.Handover = reading.Adjustment.Handover
+					if s.role == "owner" {
+						view.Adjustment = reading.Adjustment
 					}
+				} else if opening, err := b.meterOpening(room, period); err == nil {
+					view.Electric, view.Water, view.Handover = opening.Electric, opening.Water, opening.Handover
 				}
 			}
-			p.Rooms = append(p.Rooms, RoomView{Room: room, Done: done, Lease: lease,
-				HasLease: lease.Effective != "" && lease.ActiveAt(period), Renewed: renewed})
+			p.Rooms = append(p.Rooms, view)
 		}
 		if s.role == "owner" {
 			for _, i := range b.Invoices {
@@ -729,7 +732,7 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if err := b.saveRoom(room, value("revision")); err != nil {
 				return inputError{err}
 			}
-		case "read":
+		case "read", "read-special":
 			next = "/?tab=meters&saved=1&period=" + period
 			if value("filter") == "missing" {
 				next += "&filter=missing"
@@ -739,7 +742,15 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if e1 != nil || e2 != nil {
 				return errInvalid
 			}
-			if err := b.read(id, period, e, v); err != nil {
+			if action == "read-special" {
+				adjustment, err := formMeterAdjustment(r)
+				if err != nil {
+					return err
+				}
+				if err := b.readWithAdjustment(id, period, e, v, adjustment); err != nil {
+					return inputError{err}
+				}
+			} else if err := b.read(id, period, e, v); err != nil {
 				return inputError{err}
 			}
 		case "draft":
