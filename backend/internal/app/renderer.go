@@ -36,6 +36,8 @@ type invoiceView struct {
 	Invoice
 	Revision                                      string
 	Remaining, Credit, NetCollected, NetReduction int64
+	ResidentBalances                              []int64 `json:",omitempty"`
+	ResidentUnallocated                           int64   `json:",omitempty"`
 }
 
 func invoicePresentation(i *Invoice, shared bool) *invoiceView {
@@ -51,6 +53,20 @@ func invoicePresentation(i *Invoice, shared bool) *invoiceView {
 		view.Reading.Adjustment.Reason = ""
 	} else {
 		view.Revision = i.Revision()
+		if len(i.ResidentShares) > 0 && i.Issued {
+			view.ResidentBalances = make([]int64, len(i.ResidentShares))
+			for j, share := range i.ResidentShares {
+				view.ResidentBalances[j] = share.Amount
+			}
+			for _, entry := range i.Entries {
+				collected, reduced := entry.balanceEffects()
+				if index := entry.ResidentShare - 1; index >= 0 && index < len(view.ResidentBalances) {
+					view.ResidentBalances[index] -= collected + reduced
+				} else {
+					view.ResidentUnallocated += collected + reduced
+				}
+			}
+		}
 	}
 	return view
 }

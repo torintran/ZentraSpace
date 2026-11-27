@@ -37,6 +37,8 @@ type Page struct {
 	RenewPeriod                                                               string
 	LeaseEmails                                                               map[string]string
 	VerificationEmail, CodeDelivery                                           string
+	ResidentEmailReady                                                        []bool        `json:",omitempty"`
+	PersonalBill                                                              *PersonalBill `json:",omitempty"`
 	ManualInvite                                                              bool
 	RoomDeleteReason                                                          string
 	PolicyPreview                                                             *PolicyPreview

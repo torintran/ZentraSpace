@@ -69,7 +69,7 @@ VietQR riêng và duyệt sao kê thủ công đã qua kiểm thử cục bộ v
 
 | Mã | Việc | Sau | Nghiệm thu và kiểm tra |
 | --- | --- | --- | --- |
-| A01 | [ ] Timeline người ở và chia theo người | P02, có ca ở ghép | Chủ trọ chọn chia theo số ngày ở từ một kỳ cụ thể. Bảng kê đã phát hành giữ nguyên phần chia. Có kiểm thử ngày ở, số âm và làm tròn về đúng tổng. Còn theo dõi và thu theo từng người. |
+| A01 | [ ] Timeline người ở và chia theo người | P02, có ca ở ghép | Có phần chia theo số ngày ở, số dư và bút toán theo người, link bảng kê cá nhân có mã xác minh và thu hồi riêng. Khoản ghi chung vẫn đối chiếu với số dư phòng. Còn nghiệm thu gửi mã SMTP và đối chiếu ca ở ghép thật. |
 | A02 | [ ] Thuê theo slot và pool điện nước | A01, có ca ký túc xá | Test slot trống, giao thời, sub-meter và phần chủ nhà chịu. Tổng phân bổ cộng phần chủ nhà bằng pool. |
 | A03 | [ ] Giữ chỗ, trả trước và tất toán | E03, có nhu cầu; A01 nếu tất toán từng người | Chia đợt giữ chỗ/trả trước và tất toán. Test cấn cọc, hoàn, rời giữa kỳ và không thu lại phần đã tính. |
 | A04 | [ ] Portal tenant và nghiệp vụ bàn giao | P02, có người thuê tham gia thử | Đã có màn bảng kê và thanh toán trên điện thoại sau xác minh. Còn tài khoản người thuê, lịch sử nhiều kỳ theo hợp đồng, thu hồi quyền khi rời hợp đồng, bàn giao và bảo trì. |

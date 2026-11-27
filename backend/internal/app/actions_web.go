@@ -161,6 +161,11 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{err}
 			}
 			next = "/rooms/" + id + "?saved=resident&period=" + period + "#room-residents"
+		case "resident-email":
+			if err := b.setResidentEmail(id, value("resident"), value("email")); err != nil {
+				return inputError{err}
+			}
+			next = "/rooms/" + id + "?saved=resident&period=" + period + "#room-residents"
 		case "resident", "resident-out":
 			room := b.room(id)
 			if room == nil {
@@ -443,6 +448,13 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			}
 			entry := Entry{Key: value("key"), Kind: value("kind"), Amount: amount, Note: value("note"),
 				Method: value("method"), Reference: value("reference")}
+			if value("residentShare") != "" {
+				share, err := number(r, "residentShare", 1, 100000000000)
+				if err != nil || int64(int(share)) != share {
+					return errInvalid
+				}
+				entry.ResidentShare = int(share)
+			}
 			if err = b.post(id, entry); err != nil {
 				return inputError{err}
 			}
@@ -476,8 +488,12 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if i == nil || !i.Issued {
 				return errInvalid
 			}
+			share, err := inviteShare(r, i)
+			if err != nil {
+				return err
+			}
 			for j := range b.Invites {
-				if b.Invites[j].InvoiceID == id {
+				if b.Invites[j].InvoiceID == id && b.Invites[j].ResidentShare == share {
 					b.Invites[j].Revoked = true
 				}
 			}
@@ -485,7 +501,7 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{errors.New("Đã đạt giới hạn lời mời của bản thử.")}
 			}
 			p.Code = accessCode()
-			v := Invite{ID: token(), InvoiceID: id, CodeHash: hash(p.Code), Expires: time.Now().Add(24 * time.Hour)}
+			v := Invite{ID: token(), InvoiceID: id, ResidentShare: share, CodeHash: hash(p.Code), Expires: time.Now().Add(24 * time.Hour)}
 			b.Invites = append(b.Invites, v)
 			p.Invoice = i
 			route, err := a.store.shareToken(s.organization, v.ID)

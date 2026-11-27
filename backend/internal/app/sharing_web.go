@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+func inviteShare(r *http.Request, i *Invoice) (int, error) {
+	if r.Form.Get("residentShare") == "" {
+		return 0, nil
+	}
+	share, err := number(r, "residentShare", 1, int64(len(i.ResidentShares)))
+	return int(share), err
+}
+
 func (a *App) share(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	p := Page{Screen: "verify", InviteID: id}
@@ -13,9 +21,11 @@ func (a *App) share(w http.ResponseWriter, r *http.Request) {
 		a.problem(w, r, err)
 		return
 	}
-	if i != nil && i.Issued {
-		p.Screen, p.Invoice = "shared", i
-		if _, err := vietQR(bank, i.Remaining(), i.PaymentCode); err == nil {
+	if i.personal != nil {
+		p.Screen, p.PersonalBill = "shared", i.personal
+	} else if i.invoice != nil && i.invoice.Issued {
+		p.Screen, p.Invoice = "shared", i.invoice
+		if _, err := vietQR(bank, i.invoice.Remaining(), i.invoice.PaymentCode); err == nil {
 			p.PaymentBank = bank
 		}
 	}

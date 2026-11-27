@@ -181,6 +181,7 @@ func (b *Book) addPolicy(policy RoomPolicy) error {
 
 type Resident struct {
 	ID, RoomID, Effective, Name, Phone, JoinedOn, LeftOn string
+	Email                                                string `json:",omitempty"`
 }
 
 func (b *Book) addResident(room *Room, ownerPeriod string, resident Resident) error {

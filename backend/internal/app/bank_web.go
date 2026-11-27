@@ -246,35 +246,46 @@ func (a *App) bankAction(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, next, http.StatusSeeOther)
 }
 
-func (a *App) sharedBill(r *http.Request) (*Invoice, BankAccount, error) {
+type sharedInvoice struct {
+	invoice  *Invoice
+	personal *PersonalBill
+}
+
+func (a *App) sharedBill(r *http.Request) (sharedInvoice, BankAccount, error) {
 	route := r.PathValue("id")
 	s, _ := a.getSession(r, "zs_reader")
 	if s.role != "share:"+route {
-		return nil, BankAccount{}, nil
+		return sharedInvoice{}, BankAccount{}, nil
 	}
 	org, id, ok := a.store.shareTarget(route)
 	if !ok || org != s.organization {
-		return nil, BankAccount{}, nil
+		return sharedInvoice{}, BankAccount{}, nil
 	}
-	var invoice *Invoice
+	var result sharedInvoice
 	var bank BankAccount
 	err := a.store.book(r.Context(), org, false, func(b *Book) error {
 		v := b.invite(id)
 		if v != nil && v.Used && v.usable(time.Now(), a.secure) {
-			invoice = b.invoice(v.InvoiceID)
-			bank = b.Bank
+			if invoice := b.invoice(v.InvoiceID); invoice != nil {
+				if v.ResidentShare != 0 {
+					result.personal = invoice.personalBill(v.ResidentShare)
+				} else {
+					result.invoice, bank = invoice, b.Bank
+				}
+			}
 		}
 		return nil
 	})
-	return invoice, bank, err
+	return result, bank, err
 }
 
 func (a *App) shareQR(w http.ResponseWriter, r *http.Request) {
-	i, bank, err := a.sharedBill(r)
+	shared, bank, err := a.sharedBill(r)
 	if err != nil {
 		a.problem(w, r, err)
 		return
 	}
+	i := shared.invoice
 	if i == nil || !i.Issued {
 		http.NotFound(w, r)
 		return

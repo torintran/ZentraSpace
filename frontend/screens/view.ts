@@ -97,6 +97,7 @@ type Resident = {
   ID: string;
   Name: string;
   Phone: string;
+  Email?: string;
   JoinedOn: string;
   LeftOn: string;
 };
@@ -124,6 +125,7 @@ type Entry = {
   Reverses?: string;
   Method?: string;
   Reference?: string;
+  ResidentShare?: number;
 };
 export type Invoice = {
   RentDays?: number;
@@ -139,6 +141,8 @@ export type Invoice = {
   CommonFee: number;
   RoomFees?: FeeLine[];
   ResidentShares?: {Name: string; Days: number; Amount: number}[];
+  ResidentBalances?: number[];
+  ResidentUnallocated?: number;
   Rent: number;
   ElectricRate: number;
   WaterRate: number;
@@ -251,6 +255,19 @@ export type PageData = {
   LeaseCount: number;
   LeaseEmails: Record<string, string> | null;
   VerificationEmail: string;
+  ResidentEmailReady?: boolean[];
+  PersonalBill?: {
+    Room: string;
+    Period: string;
+    DueDate: string;
+    Name: string;
+    Days: number;
+    Amount: number;
+    Collected: number;
+    Reduced: number;
+    Remaining: number;
+    Credit: number;
+  };
   ManualInvite?: boolean;
   CodeDelivery: string;
   ExpiringLeases: {RoomID: string; RoomName: string; Tenant: string; EndsOn: string; NextPeriod: string}[] | null;
@@ -328,7 +345,7 @@ export type PageData = {
   Invoices: Invoice[];
   Invoice: Invoice | null;
   ReconciledEntries: Record<string, boolean> | null;
-  Invites: { ID: string; Expires: string }[] | null;
+  Invites: { ID: string; Expires: string; ResidentShare?: number }[] | null;
   Import: { Period: string; Add: number; Skip: number; Data: string; SiteID: string; SiteName: string } | null;
   Bank: Bank | null;
   BankReview: BankReview | null;

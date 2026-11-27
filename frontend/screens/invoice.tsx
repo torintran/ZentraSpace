@@ -13,6 +13,21 @@ import type { PageData, Invoice } from './view';
 import { InvoiceDetails } from './common';
 import { InvoiceCredit } from './invoice-credit';
 
+function ResidentShareSelect({ shares }: { shares: Invoice['ResidentShares'] }) {
+  if (!shares?.length) return null;
+  return (
+    <label>
+      Phần của người ở
+      <FieldSelect name="residentShare">
+        <option value="">Ghi chung cho phòng</option>
+        {shares.map((share, index) => (
+          <option key={index} value={index + 1}>{share.Name} · {share.Days} ngày</option>
+        ))}
+      </FieldSelect>
+    </label>
+  );
+}
+
 export function InvoiceScreen({ page }: { page: PageData }) {
   const bill = page.Invoice;
   if (!bill) return null;
@@ -43,9 +58,25 @@ export function InvoiceScreen({ page }: { page: PageData }) {
             <section className="history">
               <h2>Chia theo số ngày ở</h2>
               <dl className="charges">
-                {bill.ResidentShares.map((share, index) => (
-                  <div key={index}><dt>{share.Name} · {share.Days} ngày</dt><dd>{money(share.Amount)}</dd></div>
-                ))}
+                {bill.ResidentShares.map((share, index) => {
+                  const balance = bill.ResidentBalances?.[index];
+                  return (
+                    <div key={index}>
+                      <dt>{share.Name} · {share.Days} ngày</dt>
+                      <dd>
+                        {money(share.Amount)}
+                        {balance !== undefined && (
+                          <small className="subtle">
+                            <br />{balance < 0 ? 'Dư' : 'Còn lại'} {money(Math.abs(balance))}
+                          </small>
+                        )}
+                      </dd>
+                    </div>
+                  );
+                })}
+                {!!bill.ResidentUnallocated && (
+                  <div><dt>Bút toán ghi chung cho phòng</dt><dd>{money(bill.ResidentUnallocated)}</dd></div>
+                )}
               </dl>
             </section>
           )}
@@ -59,6 +90,7 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                 <input type="hidden" name="id" value={bill.ID} />
                 <input type="hidden" name="key" value={randomKey()} />
                 <input type="hidden" name="kind" value="Thu" />
+                <ResidentShareSelect shares={bill.ResidentShares} />
                 <label>
                   Số tiền (đồng)
                   <FieldInput
@@ -94,6 +126,7 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                   <input type="hidden" name="csrf" value={page.CSRF} />
                   <input type="hidden" name="id" value={bill.ID} />
                   <input type="hidden" name="key" value={randomKey()} />
+                  <ResidentShareSelect shares={bill.ResidentShares} />
                   <label>
                     Loại giao dịch
                     <FieldSelect name="kind">
@@ -154,6 +187,26 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                   </Action>
                 </form>
               )}
+              {!!bill.ResidentShares?.length && (
+                <details className="history">
+                  <summary>Gửi bảng kê cá nhân</summary>
+                  {bill.ResidentShares.map((share, index) => (
+                    <div className="list-row" key={index}>
+                      <strong>{share.Name}</strong>
+                      {page.ResidentEmailReady?.[index] || page.ManualInvite ? (
+                        <form method="post" action={page.ResidentEmailReady?.[index] ? '/action/invite-email' : '/action/invite'}>
+                          <input type="hidden" name="csrf" value={page.CSRF} />
+                          <input type="hidden" name="id" value={bill.ID} />
+                          <input type="hidden" name="residentShare" value={index + 1} />
+                          <Action className="secondary">
+                            {page.ResidentEmailReady?.[index] ? 'Tạo link và gửi mã' : 'Tạo link thử'}
+                          </Action>
+                        </form>
+                      ) : <small>Cần đăng ký email và bật SMTP</small>}
+                    </div>
+                  ))}
+                </details>
+              )}
               {!page.SMTP.Configured ? (
                 <p className="subtle">
                   Chưa cấu hình gửi mã qua email.{' '}
@@ -194,7 +247,7 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                         <Action className="secondary">
                           Thu hồi link hiện tại
                         </Action>{' '}
-                        <small>Hết hạn {clock(invite.Expires)}</small>
+                        <small>{invite.ResidentShare ? bill.ResidentShares?.[invite.ResidentShare - 1]?.Name : 'Cả phòng'} · Hết hạn {clock(invite.Expires)}</small>
                       </form>
                     </Fragment>
                   ))
@@ -240,6 +293,7 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                       <div>
                         <strong>
                           {entry.Kind}
+                          {entry.ResidentShare ? <> · {bill.ResidentShares?.[entry.ResidentShare - 1]?.Name}</> : null}
                           {has(methodLabel(entry)) ? (
                             <> · {methodLabel(entry)}</>
                           ) : null}

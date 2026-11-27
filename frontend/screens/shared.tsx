@@ -4,6 +4,30 @@ import type { PageData, Invoice } from './view';
 import { InvoiceDetails } from './common';
 
 export function SharedScreen({ page }: { page: PageData }) {
+  const personal = page.PersonalBill;
+  if (personal) {
+    return (
+      <>
+        <header className="tenant-summary">
+          <p className="eyebrow">PHÒNG {personal.Room} · KỲ {personal.Period}</p>
+          <h1>Bảng kê cá nhân</h1>
+          <p>{personal.Name} · {personal.Days} ngày ở</p>
+          <p>{personal.Credit > 0 ? 'Số tiền dư' : 'Còn phải trả'}</p>
+          <strong className="tenant-balance">{money(personal.Credit || personal.Remaining)}</strong>
+          {personal.DueDate && <p>Hạn thanh toán <time dateTime={personal.DueDate}>{personal.DueDate}</time></p>}
+        </header>
+        <Panel className="card" as="section">
+          <h2>Chi tiết phần của bạn</h2>
+          <dl className="charges">
+            <div><dt>Phần chia theo số ngày ở</dt><dd>{money(personal.Amount)}</dd></div>
+            <div><dt>Đã thu ròng</dt><dd>{money(personal.Collected)}</dd></div>
+            <div><dt>Giảm trừ</dt><dd>{money(personal.Reduced)}</dd></div>
+          </dl>
+          <p className="subtle">Khoản ghi chung của phòng được chủ trọ đối chiếu riêng.</p>
+        </Panel>
+      </>
+    );
+  }
   const bill = page.Invoice;
   if (!bill) return null;
   return (

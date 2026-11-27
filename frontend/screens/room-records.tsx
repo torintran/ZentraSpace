@@ -111,6 +111,21 @@ export function RoomResidents({
             {person.Phone && <p>{person.Phone}</p>}
             {person.LeftOn && <p>Rời phòng {person.LeftOn}</p>}
           </div>
+          {person.ID && (
+            <details>
+              <summary>Email xác minh</summary>
+              <form className="form" method="post" action="/action/resident-email">
+                <input type="hidden" name="id" value={roomID} />
+                <input type="hidden" name="resident" value={person.ID} />
+                <input type="hidden" name="csrf" value={page.CSRF} />
+                <input type="hidden" name="period" value={page.Period} />
+                <label>Email người nhận
+                  <FieldInput name="email" type="email" maxLength={254} defaultValue={person.Email} />
+                </label>
+                <Action className="secondary">Lưu email</Action>
+              </form>
+            </details>
+          )}
           {person.ID && !person.LeftOn && (
             <details>
               <summary>Ghi ngày rời phòng</summary>

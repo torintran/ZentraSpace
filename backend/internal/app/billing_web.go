@@ -36,7 +36,10 @@ func (a *App) invoice(w http.ResponseWriter, r *http.Request) {
 			p.MeterReviewHeld = b.siteMeterHold(room.SiteID, p.Invoice.Period)
 		}
 		if settings.Configured && p.Invoice.Issued {
-			p.VerificationEmail = b.LeaseEmails[p.Invoice.RoomID+"/"+p.Invoice.LeaseEffective]
+			p.VerificationEmail = b.verificationAddress(p.Invoice, 0)
+			for j := range p.Invoice.ResidentShares {
+				p.ResidentEmailReady = append(p.ResidentEmailReady, validEmail(b.verificationAddress(p.Invoice, j+1)))
+			}
 		}
 		if p.Invoice.Issued {
 			p.AvailableCredit = p.Invoice.transferableCredit()

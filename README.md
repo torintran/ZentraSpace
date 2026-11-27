@@ -9,7 +9,11 @@ ZentraSpace là ứng dụng quản lý nhiều dãy trọ. Chủ trọ có th�
 ![Tổng quan kỳ thu với việc cần làm, trạng thái phòng và tiến độ chốt kỳ](docs/screenshots/tong-quan.png)
 
 <details>
-<summary>Xem bản đồ dãy trọ, lịch sử hợp đồng và cấu hình SMTP</summary>
+<summary>Xem bảng kê cá nhân, bản đồ dãy trọ, lịch sử hợp đồng và cấu hình SMTP</summary>
+
+**Bảng kê cá nhân trên điện thoại**
+
+![Bảng kê cá nhân sau xác minh, hiển thị phần chia theo số ngày ở và số dư](docs/screenshots/bang-ke-ca-nhan.png)
 
 **Dãy trọ và bản đồ**
 
@@ -48,6 +52,10 @@ Tạo **Dãy trọ** bằng tên, địa chỉ và số phòng tối đa. Mở *
 Mở **Chi tiết** từ danh sách dãy để xem địa chỉ, số phòng đã tạo, số phòng đang thuê và số phòng trống. Chọn **Sửa thông tin** để đổi tên và số phòng tối đa. Chủ trọ có thể chọn **Xóa dãy trọ** ở cuối trang chi tiết sau khi đã chuyển hoặc xóa hết phòng trong dãy. Trong chi tiết phòng, mục **Xóa phòng** áp dụng cho phòng chưa có người thuê, hợp đồng, chỉ số, bảng kê hoặc giao dịch. Khi xác nhận xóa, hệ thống bỏ cả ảnh và các mẫu phí chưa sử dụng của phòng đó.
 
 Tạo **Mẫu giá và phí** để dùng lại tiền thuê, đơn giá điện nước và một khoản phí định kỳ. Khi gán mẫu, phòng nhận một bản sao các mức giá và phí. Phòng đặc biệt có thể nhập giá riêng hoặc thêm khoản thu riêng. Trong hồ sơ phòng, chủ trọ có thể lưu một ảnh JPG hoặc PNG tối đa 2 MB, ghi người ở cùng và ngày vào hoặc rời phòng. Ảnh được mã hóa theo tổ chức. **Lịch sử phòng** tổng hợp hợp đồng, thay đổi người ở, bảng kê, thu tiền và các giao dịch cọc đã ghi.
+
+Trong **Người ở trong kỳ → Cách chia bảng kê**, chọn **Chia theo số ngày ở** trước khi phát hành. Khi ghi thu hoặc điều chỉnh bảng kê, chọn **Phần của người ở** để cập nhật số dư của người đó. Các khoản ghi chung, gồm giao dịch đối soát ngân hàng, vẫn được tính vào số dư của cả phòng.
+
+Đăng ký email của người ở cùng trong hồ sơ phòng rồi mở **Gửi bảng kê cá nhân** trên bảng kê đã phát hành. Mỗi lời mời chỉ mở phần chia và các khoản được ghi cho người đó. Dùng link bảng kê cả phòng để xem VietQR đối soát theo phòng.
 
 Hồ sơ chính chỉ hiển thị hợp đồng của kỳ đang xem và tối đa tám hoạt động trong kỳ. Mở **Xem tất cả hợp đồng** để tra cứu hợp đồng và tệp của các kỳ khác, hoặc **Mở lịch sử phòng** để lọc nhật ký theo tháng và loại hoạt động. Mỗi trang lịch sử tải tối đa 12 dòng. Dữ liệu nguồn vẫn nằm trong sổ mã hóa của tổ chức.
 

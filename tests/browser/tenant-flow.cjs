@@ -734,6 +734,17 @@ async function run() {
       await form.getByRole('button', {name:'Lưu khoản phí'}).click();
       await owner.getByRole('status').filter({hasText:'Đã lưu khoản phí'}).waitFor();
     }
+    await owner.getByText('Thêm người ở cùng', {exact:true}).click();
+    const extraResident = owner.locator('form[action="/action/resident"]');
+    await fields(extraResident, {name:'Người ở cùng giữa kỳ', joinedOn:period+'-16'});
+    await extraResident.getByRole('button', {name:'Lưu người ở'}).click();
+    await owner.locator('#room-residents').getByText('Người ở cùng giữa kỳ', {exact:true}).waitFor();
+    await owner.getByText('Cách chia bảng kê', {exact:true}).click();
+    const sharePolicy = owner.locator('form[action="/action/resident-share-policy"]');
+    await sharePolicy.locator('[name="mode"]').selectOption('days');
+    await sharePolicy.getByRole('button', {name:'Lưu cách chia'}).click();
+    await owner.getByText('Cách chia bảng kê', {exact:true}).click();
+    assert.equal(await sharePolicy.locator('[name="mode"]').inputValue(), 'days');
     await owner.goto(`${app}/?tab=meters&period=${period}`);
     const meter = owner.locator('.meter-row').filter({hasText:roomName});
     await fields(meter, {electric:'10', water:'2'});
@@ -789,6 +800,48 @@ async function run() {
     assert.equal(await tenant.locator('.tenant-balance').textContent(), '2.000.000 ₫');
     await tenant.getByText('Đã thu ròng', {exact:true}).waitFor();
     console.log('PASS Playwright: room fees → issued bill → mobile tenant verification → mock payment → updated balance');
+    await owner.goto(invoiceURL);
+    const residentPayment = owner.locator('form[action="/action/post"]').filter({
+      has:owner.getByRole('button', {name:'Ghi khoản thu'}),
+    });
+    await fields(residentPayment, {amount:'100000'});
+    await residentPayment.getByLabel('Phần của người ở').selectOption('2');
+    await residentPayment.getByLabel('Phương thức').selectOption('cash');
+    await residentPayment.getByRole('button', {name:'Ghi khoản thu'}).click();
+    await owner.getByText('Còn lại 621.667 ₫', {exact:true}).waitFor();
+    await owner.getByText('Bút toán ghi chung cho phòng', {exact:true}).waitFor();
+    await tenant.reload();
+    assert.equal(await tenant.locator('.tenant-balance').textContent(), '1.900.000 ₫');
+    assert.equal(await tenant.getByText('Người ở cùng giữa kỳ', {exact:true}).count(), 0);
+    console.log('PASS Playwright: resident-day shares, named partial receipt, shared bank receipt and tenant privacy');
+    await owner.getByText('Gửi bảng kê cá nhân', {exact:true}).click();
+    const personalForm = owner.locator('form[action="/action/invite"]').filter({
+      has:owner.locator('input[name="residentShare"][value="2"]'),
+    });
+    await personalForm.getByRole('button', {name:'Tạo link thử'}).click();
+    const personalCode = (await owner.locator('.code strong').textContent()).trim();
+    const personalURL = (await owner.locator('#share-message').inputValue()).match(/https?:\/\/[^\s]+/)?.[0];
+    assert.ok(personalURL);
+    const person = await browser.newPage({viewport:{width:390,height:844}, isMobile:true, hasTouch:true});
+    await person.goto(personalURL);
+    await show(person, 'Xác minh để xem bảng kê');
+    assert.equal(await person.getByText('Người ở cùng giữa kỳ', {exact:false}).count(), 0);
+    await person.getByLabel('Mã xác minh').fill(personalCode);
+    await person.getByRole('button', {name:'Xem bảng kê'}).click();
+    await show(person, 'Bảng kê cá nhân');
+    assert.equal(await person.locator('.tenant-balance').textContent(), '621.667 ₫');
+    assert.equal(await person.getByText('Người thuê mô phỏng', {exact:false}).count(), 0);
+    assert.equal(await person.getByText('Wi-Fi', {exact:true}).count(), 0);
+    assert.equal((await person.request.get(personalURL + '/qr')).status(), 404);
+    await tenant.reload();
+    assert.equal(await tenant.locator('.tenant-balance').textContent(), '1.900.000 ₫');
+    await owner.goto(invoiceURL);
+    await owner.locator('form.revoke').filter({hasText:'Người ở cùng giữa kỳ'})
+      .getByRole('button', {name:'Thu hồi link hiện tại'}).click();
+    await person.reload();
+    await show(person, 'Xác minh để xem bảng kê');
+    await person.close();
+    console.log('PASS Playwright: individual invitation scope, privacy, independent room link and revocation');
 
     const following = '2026-12';
     await owner.goto(`${app}/?tab=meters&period=${following}`);

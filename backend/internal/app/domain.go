@@ -49,6 +49,7 @@ type Entry struct {
 	Reverses        string `json:",omitempty"`
 	Method          string `json:",omitempty"`
 	Reference       string `json:",omitempty"`
+	ResidentShare   int    `json:",omitempty"`
 }
 
 const (
@@ -73,6 +74,7 @@ type Invite struct {
 	Used, Revoked           bool
 	PendingDelivery         bool `json:",omitempty"`
 	RegisteredChannel       bool `json:",omitempty"`
+	ResidentShare           int  `json:",omitempty"`
 }
 
 func (v Invite) usable(now time.Time, requireRegistered bool) bool {
@@ -331,18 +333,25 @@ func (i Invoice) NetReduction() int64 { _, reduced := i.totals(); return reduced
 
 func (i Invoice) totals() (collected, reduced int64) {
 	for _, e := range i.Entries {
-		switch e.Kind {
-		case "Thu", "Cấn cọc", creditIn, creditOutReversed:
-			collected += e.Amount
-		case "Hoàn", "Đảo thu", creditOut, creditInReversed:
-			collected -= e.Amount
-		case "Giảm":
-			reduced += e.Amount
-		case "Đảo giảm":
-			reduced -= e.Amount
-		}
+		c, d := e.balanceEffects()
+		collected += c
+		reduced += d
 	}
 	return
+}
+
+func (e Entry) balanceEffects() (collected, reduced int64) {
+	switch e.Kind {
+	case "Thu", "Cấn cọc", creditIn, creditOutReversed:
+		return e.Amount, 0
+	case "Hoàn", "Đảo thu", creditOut, creditInReversed:
+		return -e.Amount, 0
+	case "Giảm":
+		return 0, e.Amount
+	case "Đảo giảm":
+		return 0, -e.Amount
+	}
+	return 0, 0
 }
 func (i Invoice) Remaining() int64 { c, d := i.totals(); return max(0, i.Total-d-c) }
 func (i Invoice) Credit() int64    { c, d := i.totals(); return max(0, c-(i.Total-d)) }
@@ -400,7 +409,7 @@ func (b *Book) reverse(id, key, original, note string) error {
 				return errors.New("Khoản thu đã đối soát với sao kê. Hãy kiểm tra giao dịch ngân hàng trước khi điều chỉnh.")
 			}
 		}
-		if source.Amount > i.refundableCash() {
+		if source.Amount > i.refundableCash() || (source.ResidentShare > 0 && source.Amount > i.residentCollected(source.ResidentShare)) {
 			return errors.New("Không thể đảo toàn bộ khoản thu vì số đã thu ròng thấp hơn khoản gốc.")
 		}
 		kind = "Đảo thu"
@@ -409,7 +418,7 @@ func (b *Book) reverse(id, key, original, note string) error {
 	default:
 		return errInvalid
 	}
-	i.Entries = append(i.Entries, Entry{Key: key, Kind: kind, Amount: source.Amount, Note: note, Date: time.Now().UTC(), Reverses: original})
+	i.Entries = append(i.Entries, Entry{Key: key, Kind: kind, Amount: source.Amount, Note: note, Date: time.Now().UTC(), Reverses: original, ResidentShare: source.ResidentShare})
 	return nil
 }
 
@@ -432,6 +441,9 @@ func (b *Book) addEntry(id string, entry Entry) error {
 	if entry.Method != "" && (entry.Kind != "Thu" || (entry.Method != cashPayment && entry.Method != transferPayment)) {
 		return errInvalid
 	}
+	if entry.ResidentShare < 0 || entry.ResidentShare > len(i.ResidentShares) {
+		return errInvalid
+	}
 	for _, e := range i.Entries {
 		if e.Key == entry.Key {
 			entry.Date = e.Date
@@ -452,7 +464,7 @@ func (b *Book) addEntry(id string, entry Entry) error {
 			return errInvalid
 		}
 	case "Hoàn":
-		if entry.Note == "" || entry.Amount > i.refundableCash() {
+		if entry.Note == "" || entry.Amount > i.refundableCash() || (entry.ResidentShare > 0 && entry.Amount > i.residentCollected(entry.ResidentShare)) {
 			return errInvalid
 		}
 	default:

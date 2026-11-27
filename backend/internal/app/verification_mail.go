@@ -45,7 +45,7 @@ func (b *Book) updateLeaseEmail(roomID, effective, email string) error {
 			for j := range b.Invites {
 				v := &b.Invites[j]
 				i := b.invoice(v.InvoiceID)
-				if i != nil && i.RoomID == roomID && i.LeaseEffective == effective {
+				if i != nil && v.ResidentShare <= 1 && i.RoomID == roomID && i.LeaseEffective == effective {
 					v.Revoked = true
 				}
 			}
@@ -178,7 +178,12 @@ func (a *App) sendInviteCode(w http.ResponseWriter, r *http.Request, org, csrf s
 		if i == nil || !i.Issued {
 			return errMissing
 		}
-		to = b.LeaseEmails[i.RoomID+"/"+i.LeaseEffective]
+		share, err := inviteShare(r, i)
+		if err != nil {
+			return err
+		}
+		v.ResidentShare = share
+		to = b.verificationAddress(i, share)
 		if !validEmail(to) {
 			return inputError{errors.New("Hãy đăng ký email người nhận trong hồ sơ hợp đồng trước.")}
 		}
@@ -187,7 +192,7 @@ func (a *App) sendInviteCode(w http.ResponseWriter, r *http.Request, org, csrf s
 		}
 		for j := range b.Invites {
 			prior := &b.Invites[j]
-			if prior.InvoiceID != invoiceID || !prior.PendingDelivery || prior.Revoked {
+			if prior.InvoiceID != invoiceID || prior.ResidentShare != v.ResidentShare || !prior.PendingDelivery || prior.Revoked {
 				continue
 			}
 			if prior.Expires.Add(-24 * time.Hour).After(now.Add(-time.Minute)) {
@@ -222,7 +227,7 @@ func (a *App) sendInviteCode(w http.ResponseWriter, r *http.Request, org, csrf s
 		}
 		for j := range b.Invites {
 			prior := &b.Invites[j]
-			if prior.InvoiceID == invoiceID && prior.ID != v.ID {
+			if prior.InvoiceID == invoiceID && prior.ResidentShare == v.ResidentShare && prior.ID != v.ID {
 				prior.Revoked = true
 			}
 		}
