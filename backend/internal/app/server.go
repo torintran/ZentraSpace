@@ -34,6 +34,7 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("GET /cash/receipt/{key}", a.cashReceipt)
 	m.HandleFunc("POST /cash/receipt/{key}", a.cashReceipt)
 	m.HandleFunc("GET /rooms/template.csv", a.roomTemplate)
+	m.HandleFunc("GET /rooms/template.xlsx", a.roomTemplate)
 	m.HandleFunc("GET /rooms/{id}", a.roomDetail)
 	m.HandleFunc("GET /rooms/{id}/photo", a.roomPhoto)
 	m.HandleFunc("POST /rooms/{id}/photo", a.roomPhoto)
@@ -91,6 +92,15 @@ func (a *App) routes() http.Handler {
 				if r.MultipartForm != nil {
 					defer r.MultipartForm.RemoveAll()
 				}
+			} else if r.URL.Path == "/action/import-file-preview" {
+				r.Body = http.MaxBytesReader(w, r.Body, roomImportUploadLimit+4096)
+				err = r.ParseMultipartForm(roomImportUploadLimit + 4096)
+				if r.MultipartForm != nil {
+					defer r.MultipartForm.RemoveAll()
+				}
+			} else if r.URL.Path == "/action/import" || r.URL.Path == "/action/import-preview" {
+				r.Body = http.MaxBytesReader(w, r.Body, 3*roomImportTextLimit+4096)
+				err = r.ParseForm()
 			} else {
 				r.Body = http.MaxBytesReader(w, r.Body, 16384)
 				err = r.ParseForm()

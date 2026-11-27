@@ -65,10 +65,19 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 		a.page(w, r, p)
 		return
 	}
-	if action == "import-preview" {
+	if action == "import-preview" || action == "import-file-preview" {
+		data := r.Form.Get("csv")
+		if action == "import-file-preview" {
+			var err error
+			data, err = roomImportFile(r)
+			if err != nil {
+				a.problem(w, r, inputError{err})
+				return
+			}
+		}
 		var preview ImportPreview
 		err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
-			result, err := b.importRooms(period, r.Form.Get("csv"), false)
+			result, err := b.importRooms(period, r.Form.Get("site"), data, false)
 			preview = result
 			if err != nil {
 				return inputError{err}
@@ -252,10 +261,13 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			}
 			next += "#room-contracts"
 		case "import":
-			if _, err := b.importRooms(period, r.Form.Get("csv"), true); err != nil {
+			if _, err := b.importRooms(period, value("site"), r.Form.Get("csv"), true); err != nil {
 				return inputError{err}
 			}
 			next = "/?tab=rooms&saved=1&period=" + period
+			if site := value("site"); site != "" {
+				next += "&site=" + url.QueryEscape(site)
+			}
 		case "room", "room-edit":
 			next = "/?tab=rooms&saved=1&period=" + period
 			room := Room{Name: value("name"), Tenant: value("tenant"), Start: period, SiteID: value("site"), Description: value("description")}

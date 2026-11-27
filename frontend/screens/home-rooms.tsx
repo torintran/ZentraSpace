@@ -170,34 +170,54 @@ export function RoomsPanel({ page }: { page: PageData }) {
             )}
           </Panel>
           <details className="card room-import">
-            <summary>Nhập danh sách CSV</summary>
+            <summary>Nhập danh sách phòng từ CSV hoặc Excel</summary>
             <p className="subtle">
-              Điền thông tin vào mẫu, rồi dán nội dung CSV vào ô bên dưới. Kỳ
-              đầu của các phòng được nhập là {page.Period}. Dòng bỏ trống người
-              đại diện sẽ tạo phòng trống.
+              Tải mẫu rồi chọn tệp đã điền hoặc dán nội dung CSV. Kỳ đầu của các
+              phòng được nhập là {page.Period}. Dòng bỏ trống người đại diện sẽ
+              tạo phòng trống.
             </p>
-            <p>
+            <div className="actions">
               <ActionLink
                 className="button secondary"
                 href="/rooms/template.csv"
               >
                 Tải mẫu CSV
               </ActionLink>
-            </p>
+              <ActionLink className="secondary" href="/rooms/template.xlsx">
+                Tải mẫu Excel
+              </ActionLink>
+            </div>
             <form
               method="post"
-              action="/action/import-preview"
+              action="/action/import-file-preview"
+              encType="multipart/form-data"
               className="form"
             >
               <input type="hidden" name="csrf" value={page.CSRF} />
               <input type="hidden" name="period" value={page.Period} />
+              {!!page.Sites?.length && (
+                <label>
+                  Dãy trọ nhận danh sách
+                  <FieldSelect name="site" defaultValue={page.SelectedSite}>
+                    <option value="">Chưa gán dãy</option>
+                    {page.Sites.map((site) => (
+                      <option key={site.ID} value={site.ID}>
+                        {site.Name}
+                      </option>
+                    ))}
+                  </FieldSelect>
+                </label>
+              )}
+              <label>
+                Tệp danh sách (CSV hoặc XLSX, tối đa 2 MB)
+                <input type="file" name="spreadsheet" accept=".csv,.xlsx" />
+              </label>
               <label>
                 Nội dung CSV
                 <FieldArea
                   name="csv"
                   rows={4}
                   spellCheck={false}
-                  required
                   defaultValue="phong,nguoi_dai_dien,tien_thue,gia_dien,gia_nuoc,dien_dau,nuoc_dau"
                 ></FieldArea>
               </label>

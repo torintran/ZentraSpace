@@ -13,9 +13,11 @@ export function ImportScreen({ page }: { page: PageData }) {
           Kỳ đầu {preview.Period}. Thêm {preview.Add} phòng mới. Bỏ qua{' '}
           {preview.Skip} dòng đã có.
         </p>
+        <p>Dãy trọ {preview.SiteName || 'chưa gán'}</p>
         <form method="post" action="/action/import" className="form">
           <input type="hidden" name="csrf" value={page.CSRF} />
           <input type="hidden" name="period" value={preview.Period} />
+          <input type="hidden" name="site" value={preview.SiteID} />
           <label>
             Danh sách đã kiểm tra
             <FieldArea

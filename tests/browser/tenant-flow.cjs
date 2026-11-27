@@ -430,6 +430,40 @@ async function checkPropertyWorkspace(browser, owner, tenant) {
   console.log('PASS Playwright: sidebar, site and map, room policy, private photo, three residents, timeline and bank names');
 }
 
+async function checkImportUpload(owner) {
+  await owner.goto(`${app}/?tab=rooms&period=${period}`);
+  const csrf = await owner.locator('input[name="csrf"]').first().inputValue();
+  const siteName = `Dãy nhập file ${roomName}`;
+  const site = await owner.request.post(`${app}/action/site`, {
+    headers:{Origin:app}, form:{csrf,period,name:siteName,capacity:'1'}, maxRedirects:0,
+  });
+  assert.equal(site.status(), 303);
+  const siteID = new URL(site.headers().location,app).searchParams.get('site');
+  await owner.goto(`${app}/?tab=rooms&period=${period}&site=${siteID}`);
+  await owner.getByText('Nhập danh sách phòng từ CSV hoặc Excel', {exact:true}).click();
+  const templateURL = await owner.getByRole('link', {name:'Tải mẫu Excel'}).getAttribute('href');
+  const template = await owner.request.get(app + templateURL);
+  assert.equal(template.status(), 200);
+  assert.equal(template.headers()['content-type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  const form = owner.locator('form[action="/action/import-file-preview"]');
+  assert.equal(await form.locator('select[name="site"]').inputValue(), siteID);
+  const upload = form.locator('input[type="file"]');
+  await upload.setInputFiles({name:'mau.xlsx',mimeType:template.headers()['content-type'],buffer:await template.body()});
+  await form.getByRole('button', {name:'Kiểm tra danh sách'}).click();
+  await owner.getByText('Thêm 0 phòng mới.', {exact:false}).waitFor();
+  await owner.goto(`${app}/?tab=rooms&period=${period}&site=${siteID}`);
+  await owner.getByText('Nhập danh sách phòng từ CSV hoặc Excel', {exact:true}).click();
+  const code = `${roomName}-CSV`;
+  const csv = `phong,nguoi_dai_dien,tien_thue,gia_dien,gia_nuoc,dien_dau,nuoc_dau\n${code},,1500000,3000,15000,2,3\n`;
+  await upload.setInputFiles({name:'danh-sach.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});
+  await form.getByRole('button', {name:'Kiểm tra danh sách'}).click();
+  await owner.getByText(`Dãy trọ ${siteName}`, {exact:true}).waitFor();
+  await owner.getByRole('button', {name:'Lưu danh sách phòng'}).click();
+  assert.equal(new URL(owner.url()).searchParams.get('site'), siteID);
+  await owner.getByRole('link', {name:`Xem chi tiết phòng ${code}`,exact:true}).waitFor();
+  console.log('PASS Playwright: template XLSX, file preview and scoped CSV import');
+}
+
 async function run() {
   assert.ok(password, 'The test environment requires an owner password.');
   const channel = process.env.ZS_BROWSER_CHANNEL;
@@ -641,6 +675,7 @@ async function run() {
     console.log('PASS Playwright: expense, deposit, refund, balances, private receipt and CSV, refund guard');
     await checkRoomOnboarding(browser, owner, tenant);
     await checkPropertyWorkspace(browser, owner, tenant);
+    await checkImportUpload(owner);
   } finally {
     await browser.close();
   }

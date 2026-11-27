@@ -37,7 +37,7 @@ Màn đăng nhập có hai lựa chọn mặc định **Chủ trọ** và **Nhâ
 
 Lệnh `docker compose exec web zentraspace seed-lease-demo 2026-11` bổ sung sáu phòng `HD-MAU-` với giá thuê và chỉ số giả lập, hợp đồng 6, 12 và 18 tháng, hai phòng ký lại, cùng bảng kê nhiều kỳ. Chạy lại cùng kỳ giữ nguyên dữ liệu demo đã tạo.
 
-Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để nhập một phòng hoặc dán CSV theo mẫu. Xem kết quả kiểm CSV trước khi lưu. Sang **Nhập điện nước** để ghi chỉ số cuối kỳ, sau đó vào **Chốt kỳ thu** để tạo bản nháp. Mở từng bảng kê, kiểm tiền và phát hành. Thao tác thu thiếu, thu dư, hoàn và ghi giảm đều có lịch sử. CSV công nợ tải được từ màn chốt kỳ.
+Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để nhập một phòng hoặc tải tệp CSV/XLSX theo mẫu. Có thể chọn dãy đích và xem kết quả kiểm tra trước khi lưu. Tệp XLSX dùng một trang tính, tối đa 150 dòng phòng và chỉ nhận giá trị đã điền. Sang **Nhập điện nước** để ghi chỉ số cuối kỳ, sau đó vào **Chốt kỳ thu** để tạo bản nháp. Mở từng bảng kê, kiểm tiền và phát hành. Thao tác thu thiếu, thu dư, hoàn và ghi giảm đều có lịch sử. CSV công nợ tải được từ màn chốt kỳ.
 
 Trên máy tính, bấm nút cạnh logo ZentraSpace ở góc trên bên trái để thu gọn hoặc mở rộng thanh bên. Chế độ thu gọn chỉ hiện biểu tượng. Trình duyệt ghi nhớ lựa chọn khi bạn chuyển trang hoặc tải lại. Trên điện thoại, bấm **Menu quản lý** để mở hoặc đóng danh sách.
 

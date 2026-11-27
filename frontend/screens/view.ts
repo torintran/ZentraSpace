@@ -315,7 +315,7 @@ export type PageData = {
   Invoice: Invoice | null;
   ReconciledEntries: Record<string, boolean> | null;
   Invites: { ID: string; Expires: string }[] | null;
-  Import: { Period: string; Add: number; Skip: number; Data: string } | null;
+  Import: { Period: string; Add: number; Skip: number; Data: string; SiteID: string; SiteName: string } | null;
   Bank: Bank | null;
   BankReview: BankReview | null;
   PaymentBank: BankAccount;

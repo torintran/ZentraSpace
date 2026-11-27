@@ -58,7 +58,7 @@ VietQR riêng và duyệt sao kê thủ công đã qua kiểm thử cục bộ v
 | Mã | Việc | Sau | Nghiệm thu và kiểm tra |
 | --- | --- | --- | --- |
 | E01 | [ ] VietQR trong bảng kê riêng | P02, F14 | Chỉ thấy QR sau xác minh. Kiểm tiền còn nợ và mã đối soát sau trả một phần trên app ngân hàng pilot. |
-| E02 | [ ] Import CSV tự phục vụ và XLSX khi cần | P02 nếu chuyển dữ liệu lặp lại | Người quản lý tải mẫu, dry-run và xem lỗi từng dòng, commit lại không trùng. XLSX có bài kiểm giới hạn và định dạng. |
+| E02 | [x] Import CSV tự phục vụ và XLSX | P02 nếu chuyển dữ liệu lặp lại | Tải mẫu CSV hoặc XLSX, chọn dãy nhận dữ liệu, xem trước và chạy lại không nhân bản phòng. Bộ kiểm XLSX chặn công thức và kiểm giới hạn phòng của dãy. |
 | E03 | [x] Sổ chi và cọc cơ bản | P02 | Có danh mục chi, chứng từ mã hóa theo tổ chức, nhận/hoàn cọc, chặn hoàn vượt số đang giữ và CSV tách tiền vào/ra. Đã đối chiếu tổng sổ, CSV, quyền chứng từ và khôi phục DB trong Docker/Playwright. |
 | E07 | [ ] Thử ghép sao kê có người duyệt | P02 nếu đối soát là vấn đề ưu tiên | Thử trên mẫu ẩn danh, ghi số giao dịch ghép được, mơ hồ và đã nhập tay. So thời gian với cách cũ. Gợi ý chỉ sau khi có căn cứ; trạng thái đã thu chỉ đổi khi ghi thu có duyệt. |
 | E04 | [ ] Chọn adapter và ghi giao dịch ngân hàng | E07 nếu vẫn có nhu cầu tự động | Chọn một provider cho ngân hàng pilot, có payload/test mode và định danh giao dịch. Contract test body/signature, sai tài khoản, retry và ack sau commit. Dùng Postman CLI cho collection khi môi trường thử đã sẵn sàng. |

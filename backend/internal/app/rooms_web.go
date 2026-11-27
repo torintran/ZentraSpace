@@ -194,6 +194,17 @@ func (a *App) roomTemplate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bạn không có quyền nhập danh sách phòng.", http.StatusForbidden)
 		return
 	}
+	if r.URL.Path == "/rooms/template.xlsx" {
+		data, err := roomImportWorkbook()
+		if err != nil {
+			a.problem(w, r, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		w.Header().Set("Content-Disposition", "attachment; filename=mau-nhap-phong.xlsx")
+		w.Write(data.Bytes())
+		return
+	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", "attachment; filename=mau-nhap-phong.csv")
 	io.WriteString(w, roomCSVHeader+"\r\n")
