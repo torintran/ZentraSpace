@@ -137,6 +137,7 @@ func (b *Book) calculateInvoiceWithLease(room Room, reading Reading, id string, 
 			invoice.Total += fee.Amount
 		}
 	}
+	b.snapshotResidentShares(&invoice, active)
 	return invoice
 }
 

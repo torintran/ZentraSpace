@@ -152,6 +152,15 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{err}
 			}
 			next = "/?tab=policies&saved=policy-applied&period=" + period
+		case "resident-share-policy":
+			room := b.room(id)
+			if room == nil {
+				return errMissing
+			}
+			if err := b.setResidentPolicy(*room, period, value("mode")); err != nil {
+				return inputError{err}
+			}
+			next = "/rooms/" + id + "?saved=resident&period=" + period + "#room-residents"
 		case "resident", "resident-out":
 			room := b.room(id)
 			if room == nil {
@@ -166,6 +175,7 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return inputError{err}
 			}
+			b.refreshRoomFeeDrafts(*room)
 			next = "/rooms/" + id + "?saved=resident&period=" + period + "#room-residents"
 		case "cash-entry":
 			amount, err := number(r, "amount", 1, 100000000000)
@@ -407,6 +417,13 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if value("filter") == "draft" || value("filter") == "due" || value("filter") == "credit" {
 				next += "&filter=" + value("filter")
 			}
+		case "issue-batch":
+			if value("confirm") != "yes" {
+				return errInvalid
+			}
+			if err := b.issueBatch(period, r.Form["selected"]); err != nil {
+				return inputError{err}
+			}
 		case "issue":
 			i := b.invoice(id)
 			if i == nil {
@@ -452,6 +469,9 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			}
 			next = "/invoice/" + id + "?saved=credit#invoice-credit"
 		case "invite":
+			if a.secure {
+				return inputError{errors.New("Hãy gửi mã qua email đã đăng ký trong hồ sơ hợp đồng.")}
+			}
 			i := b.invoice(id)
 			if i == nil || !i.Issued {
 				return errInvalid

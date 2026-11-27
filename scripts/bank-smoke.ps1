@@ -99,6 +99,12 @@ if ($MockBase) {
     Check ($p.Content.Contains('Đã thêm 0 giao dịch, bỏ qua 1 dòng')) 'statement backfill deduplicates the webhook transaction'
 }
 $transfer=Capture $p.Content ('(?s)'+[regex]::Escape($ref)+'.*?href="/bank/review/([a-f0-9]+)"')
+$p=Page $owner "/export?view=pending&period=$period"
+Check ($p.StatusCode -eq 200 -and $p.Content.Contains("$ref,") -and $p.Content.Contains(',350000,')) 'pending export includes the unallocated transfer'
+$p=Page $owner '/export?view=pending&period=2026-10'
+Check (!$p.Content.Contains($ref)) 'pending export respects the transaction month'
+$p=Page $meter "/export?view=pending&period=$period"
+Check ($p.StatusCode -eq 403) 'meter role cannot export unallocated receipts'
 $p=Page $reader "/p/$invite"
 Check ($p.Content.Contains('2.850.000')) 'ingestion does not book a payment before approval'
 $p=Page $owner "/bank/review/$transfer"
@@ -106,6 +112,15 @@ Check ($p.Content.Contains($room)) 'exact reference suggests the intended room'
 $form=@{csrf=$csrf;invoice=$invoice;confirm='yes';existing='new'}
 $p=Page $owner "/bank/approve/$transfer" $form
 $p=Page $owner "/bank/approve/$transfer" $form
+$p=Page $owner "/export?view=pending&period=$period"
+Check (!$p.Content.Contains($ref)) 'reconciled transfer leaves the pending export'
+$cashKey=[Guid]::NewGuid().ToString('N') + '0123456789abcdef'
+$cashRef="CASH-$ref"
+$cash=@{csrf=$csrf;key=$cashKey;date='2026-11-20';amount='50000';reference=$cashRef;note='Tiền mặt chờ phân bổ'}
+$null=Page $owner '/bank/cash-receipt' $cash
+$null=Page $owner '/bank/cash-receipt' $cash
+$p=Page $owner "/export?view=pending&period=$period"
+Check ([regex]::Matches($p.Content, [regex]::Escape("$cashRef,,50000,Tiền mặt chờ phân bổ,Tiền mặt")).Count -eq 1) 'unallocated cash is exported once on replay'
 $p=Page $reader "/p/$invite"
 Check ($p.Content.Contains('2.500.000') -and -not $p.Content.Contains('2.150.000') -and $p.Content.Contains($memo)) 'approved partial payment updates balance once and keeps memo'
 $qrAfter=Page $reader "/p/$invite/qr"

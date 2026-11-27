@@ -34,7 +34,7 @@ Trạng thái ngày 27/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. C
 | F06 | [ ] Nhập và xác nhận điện nước | F04 | Có mốc bàn giao, thay công tơ, mã công tơ tổng, đối chiếu với tổng điện nước phòng và duyệt có lý do. Còn danh mục định danh công tơ từng phòng, tem QR và hồ sơ ca có nhiều lần thay trong một kỳ. |
 | F07 | [x] Tính và tạo lô bảng kê nháp | F04, F06 | Tính kỳ đủ và kỳ lẻ bằng VND nguyên, có phí chung và phí riêng. Hàng chờ chênh lệch công tơ giữ bảng kê tại dãy bị ảnh hưởng cho đến khi chủ trọ duyệt. |
 | F08 | [x] Phát hành bất biến | F07 | Bản xem trước được kiểm phiên bản trong transaction phát hành. Kiểm phát hành đồng thời, bỏ qua phòng thiếu chỉ số và khóa chỉ số của bảng kê đã phát hành. |
-| F14 | [ ] Xem bảng kê riêng sau xác minh | F08, G05 | Link có hạn/thu hồi và cần xác minh qua kênh đã đăng ký. Test chuyển tiếp, đọc sai phòng, hết hạn và thu hồi khi đã mở phiên. Người thuê đã xác minh đọc được mốc điện nước, cách tính, tổng và hạn trên web di động. |
+| F14 | [ ] Xem bảng kê riêng sau xác minh | F08, G05 | HTTPS yêu cầu email đã đăng ký cho cả xác minh và truy cập bảng kê/QR. Có kiểm tra hết hạn, chuyển tiếp và thu hồi phiên. Còn nghiệm thu gửi mã qua SMTP thực tế và đối chiếu trên thiết bị người thuê. |
 | F09 | [ ] Gửi lời nhắc qua Zalo | F14 | Nội dung copy và preview không có số tiền, tên hoặc số phòng. Người nhận mở link để xác minh. Đối chiếu màn đã xác minh với bảng kê chốt trên điện thoại Android/iPhone. |
 
 **Cổng 1A.** F05, F06–F08, F14 và F09 chạy liền với dữ liệu thử. Chủ trọ đối chiếu bảng kê theo từng phòng; kiểm luồng xác minh và thử link chuyển tiếp trước khi gửi thật.
@@ -43,11 +43,11 @@ Trạng thái ngày 27/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. C
 
 | Mã | Việc | Sau | Nghiệm thu và kiểm tra |
 | --- | --- | --- | --- |
-| F10 | [ ] Ghi nhận thu thủ công | F08 | Ghi thu thiếu, đủ, dư và chống trùng. Có sổ chuyển tiền dư sang bảng kê kỳ sau của cùng hợp đồng và đảo chuyển. Còn nhận khoản chưa phân bổ khi chưa có bảng kê đích. |
+| F10 | [x] Ghi nhận thu thủ công | F08 | Ghi thu thiếu, đủ, dư và chống trùng. Có sổ chuyển tiền dư sang bảng kê kỳ sau của cùng hợp đồng và đảo chuyển. Khoản tiền mặt chưa có bảng kê đích được ghi riêng vào hàng chờ và giữ nguyên phương thức khi phân bổ. |
 | F11 | [x] Điều chỉnh có chứng từ tham chiếu | F10 | Đảo khoản thu hoặc ghi giảm bằng bút toán mới có lý do và mã chứng từ gốc. Kiểm số dư sau thu một phần, gửi đồng thời, đảo lặp và trường hợp đã đối soát ngân hàng. |
-| F12 | [ ] Xuất công nợ theo kỳ | F10, F11 | Có CSV công nợ, số đã tất toán, còn thiếu, chuyển dư và dư khả dụng từ bảng kê. Còn xuất các khoản nhận chưa gắn với bảng kê. |
-| F13 | [ ] Chuẩn bị vận hành pilot | F02, F08, F10, F14 | Diễn tập restore DB/tệp đã mã hóa và khóa cất riêng. Kiểm truy cập sai quyền, log/analytics/cache/preview không chứa số liệu chia sẻ, và rollback về sổ cũ. |
-| F15 | [ ] Hoàn thiện luồng chốt kỳ dễ thao tác | G05, F06, F09, F10 | Ba thao tác chính dễ thấy, nút có nhãn ≥44×44, zoom 200%, kiểm tương phản và focus. Thử tìm phòng, lọc và xử lý lô theo quyền. Che số liệu tổng dùng được khi mở màn hình chung. |
+| F12 | [x] Xuất công nợ theo kỳ | F10, F11 | Có CSV công nợ và CSV khoản chưa phân bổ cho cả tiền mặt và chuyển khoản, lọc theo tháng giao dịch. Khoản đã phân bổ rời khỏi file chờ. |
+| F13 | [ ] Chuẩn bị vận hành pilot | F02, F08, F10, F14 | Docker đã diễn tập chuyển sang DB phục hồi rồi quay về DB gốc, so CSV công nợ và tệp chứng từ qua ứng dụng. README có hướng dẫn giữ khóa riêng và quay lại sổ cũ. Còn nghiệm thu trên môi trường pilot, kiểm log/analytics/preview của hạ tầng triển khai và đối chiếu sổ cũ với người vận hành. |
+| F15 | [ ] Hoàn thiện luồng chốt kỳ dễ thao tác | G05, F06, F09, F10 | Có tìm phòng, lọc bảng kê, che số liệu tổng và phát hành lô theo quyền chủ trọ. Playwright kiểm thao tác bàn phím, focus, tương phản và nút tối thiểu 44 px cho form phát hành lô, không cuộn ngang ở 640/320 px. Còn nghiệm thu zoom 200% toàn luồng và thao tác với người dùng mục tiêu. |
 | P01 | [ ] Chạy song song hai kỳ thật | F05, F09, F12, F13, F15 | Mục tiêu 4/5 quản lý từ 55 tuổi tự hoàn thành luồng. Kiểm người thuê đọc đúng bảng kê sau xác minh. Đối chiếu từng đồng, đo thời gian khách, hỏi lại, điều chỉnh, thời gian hỗ trợ và lượt quay lại. |
 | P02 | [ ] Quyết định mở bản trả phí | P01 | Đối chiếu đủ hai kỳ và giải quyết chênh lệch. Đo tiến độ so với mục tiêu 30%, ghi khách thực hiện cam kết phí và chọn vấn đề dẫn tới nhánh mở rộng đầu tiên. |
 
@@ -69,7 +69,7 @@ VietQR riêng và duyệt sao kê thủ công đã qua kiểm thử cục bộ v
 
 | Mã | Việc | Sau | Nghiệm thu và kiểm tra |
 | --- | --- | --- | --- |
-| A01 | [ ] Timeline người ở và chia theo người | P02, có ca ở ghép | Version policy và snapshot occupancy theo ngày. Golden test người vào/ra, phần âm, làm tròn; tổng share bằng bảng kê. |
+| A01 | [ ] Timeline người ở và chia theo người | P02, có ca ở ghép | Chủ trọ chọn chia theo số ngày ở từ một kỳ cụ thể. Bảng kê đã phát hành giữ nguyên phần chia. Có kiểm thử ngày ở, số âm và làm tròn về đúng tổng. Còn theo dõi và thu theo từng người. |
 | A02 | [ ] Thuê theo slot và pool điện nước | A01, có ca ký túc xá | Test slot trống, giao thời, sub-meter và phần chủ nhà chịu. Tổng phân bổ cộng phần chủ nhà bằng pool. |
 | A03 | [ ] Giữ chỗ, trả trước và tất toán | E03, có nhu cầu; A01 nếu tất toán từng người | Chia đợt giữ chỗ/trả trước và tất toán. Test cấn cọc, hoàn, rời giữa kỳ và không thu lại phần đã tính. |
 | A04 | [ ] Portal tenant và nghiệp vụ bàn giao | P02, có người thuê tham gia thử | Đã có màn bảng kê và thanh toán trên điện thoại sau xác minh. Còn tài khoản người thuê, lịch sử nhiều kỳ theo hợp đồng, thu hồi quyền khi rời hợp đồng, bàn giao và bảo trì. |

@@ -26,6 +26,24 @@
   min-height: 24px;
   flex: none;
 }
+.batch-publish .check {
+  cursor: pointer;
+}
+.batch-publish .check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.batch-publish .check:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.batch-publish button {
+  background: var(--primary);
+  color: var(--paper);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .payment-qr {
   display: block;
   width: min(280px, 100%);

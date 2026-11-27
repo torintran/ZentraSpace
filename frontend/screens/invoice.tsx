@@ -39,6 +39,16 @@ export function InvoiceScreen({ page }: { page: PageData }) {
       <div className="columns">
         <Panel className="card" as="section">
           <InvoiceDetails invoice={bill} />
+          {!!bill.ResidentShares?.length && (
+            <section className="history">
+              <h2>Chia theo số ngày ở</h2>
+              <dl className="charges">
+                {bill.ResidentShares.map((share, index) => (
+                  <div key={index}><dt>{share.Name} · {share.Days} ngày</dt><dd>{money(share.Amount)}</dd></div>
+                ))}
+              </dl>
+            </section>
+          )}
         </Panel>
         <Panel className="card" as="section">
           {has(bill.Issued) ? (
@@ -119,14 +129,15 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                 </>
               ) : null}
               <p className="subtle">
-                Tạo link để gửi qua Zalo. Trao mã dùng một lần qua kênh liên hệ
-                riêng đã xác nhận với người thuê.
+                Tạo link để gửi qua Zalo. {page.ManualInvite
+                  ? 'Có thể trao mã riêng khi thử cục bộ.'
+                  : 'Mã dùng một lần được gửi tới email đã đăng ký của người thuê.'}
               </p>
-              <form method="post" action="/action/invite">
+              {page.ManualInvite && <form method="post" action="/action/invite">
                 <input type="hidden" name="csrf" value={page.CSRF} />
                 <input type="hidden" name="id" value={bill.ID} />
                 <Action className="secondary">Tạo link mới</Action>
-              </form>
+              </form>}
               {page.VerificationEmail && (
                 <form
                   method="post"

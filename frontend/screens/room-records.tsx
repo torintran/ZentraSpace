@@ -77,6 +77,23 @@ export function RoomResidents({
         <h2>Người ở trong kỳ</h2>
         {residents.length > 0 && <PersonIcons count={residents.length} />}
       </div>
+      {occupied && (
+        <details>
+          <summary>Cách chia bảng kê</summary>
+          <form method="post" action="/action/resident-share-policy" className="form">
+            <input type="hidden" name="csrf" value={page.CSRF} />
+            <input type="hidden" name="id" value={roomID} />
+            <input type="hidden" name="period" value={page.Period} />
+            <label>Áp dụng từ kỳ {page.Period}
+              <select name="mode" defaultValue={page.ResidentSplitMode || 'representative'}>
+                <option value="representative">Người đại diện trả toàn bộ</option>
+                <option value="days">Chia theo số ngày ở</option>
+              </select>
+            </label>
+            <Action>Lưu cách chia</Action>
+          </form>
+        </details>
+      )}
       {!occupied && (
         <p className="subtle">
           Khi có hợp đồng hiệu lực, bạn có thể thêm người ở cùng.

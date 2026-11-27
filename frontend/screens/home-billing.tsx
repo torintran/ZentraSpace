@@ -1,9 +1,10 @@
 import { Fragment } from 'react';
 import { Action, ActionLink, FieldInput, Panel, Status } from './components';
-import { has, itemKey } from './view';
+import { has, itemKey, money } from './view';
 import type { PageData, Invoice } from './view';
 
 export function BillingPanel({ page }: { page: PageData }) {
+  const drafts = page.Filter === 'draft' ? (page.Invoices ?? []).filter((invoice) => !invoice.Issued) : [];
   return (
     <>
       <div className="columns">
@@ -36,6 +37,9 @@ export function BillingPanel({ page }: { page: PageData }) {
             >
               Xuất công nợ
             </ActionLink>
+            <ActionLink className="button secondary" href={'/export?view=pending&period=' + page.Period}>
+              Xuất khoản nhận chờ đối soát
+            </ActionLink>
           </div>
           <nav className="tabs" aria-label="Lọc bảng kê">
             <a
@@ -67,6 +71,24 @@ export function BillingPanel({ page }: { page: PageData }) {
               Có tiền dư
             </a>
           </nav>
+          {drafts.length > 0 && (
+            <details>
+              <summary>Phát hành nhiều bảng kê</summary>
+              <form method="post" action="/action/issue-batch" className="form batch-publish">
+                <input type="hidden" name="csrf" value={page.CSRF} />
+                <input type="hidden" name="period" value={page.Period} />
+                <p className="subtle">Chọn tối đa 100 bảng kê. Kiểm tra chi tiết từng phòng trước khi phát hành.</p>
+                {drafts.map((invoice) => (
+                  <label className="check" key={invoice.ID}>
+                    <input type="checkbox" name="selected" value={invoice.ID + ':' + invoice.Revision} />
+                    <span>{invoice.RoomName} · {money(invoice.Total)}</span>
+                  </label>
+                ))}
+                <label className="check"><input type="checkbox" name="confirm" value="yes" required /><span>Tôi đã kiểm tra các bảng kê đã chọn.</span></label>
+                <button>Phát hành bảng kê đã chọn</button>
+              </form>
+            </details>
+          )}
           {has(page.Invoices) ? (
             page.Invoices.map((invoice, index) => (
               <Fragment key={itemKey(invoice, index)}>

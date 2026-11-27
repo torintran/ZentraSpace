@@ -27,6 +27,8 @@ type Reading struct {
 	Adjustment                                             MeterAdjustment
 }
 type Invoice struct {
+	ResidentPolicyVersion                                             string          `json:",omitempty"`
+	ResidentShares                                                    []ResidentShare `json:",omitempty"`
 	ID, RoomID, RoomName, Period                                      string
 	LeaseEffective, LeaseTenant                                       string
 	DueDate, CommonFeeLabel                                           string
@@ -70,10 +72,18 @@ type Invite struct {
 	Attempts                int
 	Used, Revoked           bool
 	PendingDelivery         bool `json:",omitempty"`
+	RegisteredChannel       bool `json:",omitempty"`
 }
+
+func (v Invite) usable(now time.Time, requireRegistered bool) bool {
+	return !v.Revoked && !v.PendingDelivery && now.Before(v.Expires) &&
+		(!requireRegistered || v.RegisteredChannel)
+}
+
 type Book struct {
-	MeterStaff         []MeterStaff  `json:",omitempty"`
-	StaffChanges       []StaffChange `json:",omitempty"`
+	ResidentPolicies   map[string]string `json:",omitempty"`
+	MeterStaff         []MeterStaff      `json:",omitempty"`
+	StaffChanges       []StaffChange     `json:",omitempty"`
 	CreditTransfers    []CreditTransfer
 	SiteMeterReadings  []SiteMeterReading
 	SiteMeterApprovals []SiteMeterApproval
@@ -127,7 +137,7 @@ func accessCode() string {
 }
 
 func (v *Invite) verify(code string, now time.Time) bool {
-	if v.Used || v.Revoked || v.PendingDelivery || v.Attempts >= 5 || !now.Before(v.Expires) {
+	if v.Used || v.Attempts >= 5 || !v.usable(now, false) {
 		return false
 	}
 	v.Attempts++
@@ -275,6 +285,14 @@ func (b *Book) issue(id string) error {
 	if i.Issued {
 		return nil
 	}
+	if err := b.canIssue(i); err != nil {
+		return err
+	}
+	b.finalizeInvoice(i, time.Now().In(vietnam).Format(time.DateOnly))
+	return nil
+}
+
+func (b *Book) canIssue(i *Invoice) error {
 	room := b.room(i.RoomID)
 	if room == nil || !b.leaseAt(*room, i.Period).ActiveAt(i.Period) {
 		return errors.New("Phòng không có hợp đồng hiệu lực trong kỳ này.")
@@ -282,12 +300,15 @@ func (b *Book) issue(id string) error {
 	if b.siteMeterHold(room.SiteID, i.Period) {
 		return errors.New("Dãy trọ còn chênh lệch công tơ tổng cần duyệt trước khi phát hành.")
 	}
+	return nil
+}
+
+func (b *Book) finalizeInvoice(i *Invoice, issuedOn string) {
 	i.Issued = true
-	i.IssuedOn = time.Now().In(vietnam).Format(time.DateOnly)
+	i.IssuedOn = issuedOn
 	if b.Bank.Configured() {
 		b.ensurePaymentCode(i)
 	}
-	return nil
 }
 
 func (i Invoice) Revision() string {
@@ -298,6 +319,9 @@ func (i Invoice) Revision() string {
 		i.Reading.ElectricAfter, i.Reading.WaterBefore, i.Reading.WaterAfter, i.RoomFees, i.Reading.Adjustment)
 	if i.RentMonthDays > 0 {
 		value += fmt.Sprintf(" %d/%d", i.RentDays, i.RentMonthDays)
+	}
+	if i.ResidentPolicyVersion != "" {
+		value += fmt.Sprintf(" %q %#v", i.ResidentPolicyVersion, i.ResidentShares)
 	}
 	return hash(value)
 }

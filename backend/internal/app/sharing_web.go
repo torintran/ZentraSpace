@@ -34,7 +34,7 @@ func (a *App) verify(w http.ResponseWriter, r *http.Request) {
 	}
 	verified := false
 	err := a.store.book(r.Context(), org, true, func(b *Book) error {
-		if v := b.invite(id); v != nil {
+		if v := b.invite(id); v != nil && v.usable(time.Now(), a.secure) {
 			verified = v.verify(r.Form.Get("code"), time.Now())
 		}
 		return nil

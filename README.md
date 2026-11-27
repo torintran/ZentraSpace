@@ -81,7 +81,7 @@ Mở **Thu chi và cọc** để ghi chi theo danh mục, nhận hoặc hoàn c�
 
 Đăng nhập bằng tài khoản `owner` mặc định rồi mở **Cấu hình → Email xác minh qua SMTP**. Điền máy chủ, cổng, kiểu TLS, địa chỉ gửi và thông tin đăng nhập nếu cần. Chọn **Lưu và bật SMTP** rồi dùng **Kiểm tra kết nối đã lưu**. Cấu hình dùng chung cho các tổ chức, có hiệu lực ngay và được mã hóa trong PostgreSQL. Các chủ trọ khác thấy trạng thái bật hoặc tắt. SMTP chỉnh từ giao diện kết nối tới địa chỉ công khai, hoặc máy chủ và cổng đã được khai báo trong `ZS_SMTP_ADDRESS`. Cấu hình `ZS_SMTP_*` trong `.env` vẫn dùng làm mặc định khi chưa có cấu hình được lưu từ giao diện.
 
-Lưu địa chỉ người nhận tại **Hợp đồng → Email xác minh bảng kê** rồi chọn **Tạo link và gửi mã qua email** trên bảng kê. Email chỉ chứa mã xác minh. Chủ trọ chia sẻ link riêng qua Zalo hoặc kênh đã thống nhất. Dùng origin HTTPS khi gửi cho người thuê thật.
+Lưu địa chỉ người nhận tại **Hợp đồng → Email xác minh bảng kê** rồi chọn **Tạo link và gửi mã qua email** trên bảng kê. Email chỉ chứa mã xác minh. Chủ trọ chia sẻ link riêng qua Zalo hoặc kênh đã thống nhất. Trên HTTPS, ZentraSpace chỉ chấp nhận link có mã được gửi qua email đã đăng ký. Tạo lại các link phát hành trước khi hệ thống bắt đầu lưu thông tin kênh xác minh.
 
 ## VietQR và đối soát sao kê
 
@@ -125,6 +125,12 @@ Dockerfile chạy test Go khi build. Từ thư mục dự án, chạy bộ kiể
 Bộ kiểm tra tự sinh thông tin đăng nhập, dựng project Compose riêng trên cổng 8088, chạy hai bộ smoke test, kiểm cô lập tổ chức ở PostgreSQL và khôi phục bản dump sang cơ sở dữ liệu thứ hai. Sau khi chạy, script dọn container, volume và tệp cấu hình thử. Nếu cổng 8088 đang dùng, truyền `-Port 8089` hoặc một cổng trống khác.
 
 Smoke test dùng dữ liệu tổng hợp để kiểm quyền công tơ, đối chiếu số tiền, phát hành, thu lặp, nhập/xuất CSV, link chuyển tiếp, mã dùng một lần, thu hồi quyền xem, ảnh QR theo số dư và duyệt sao kê. Kiểm tra khôi phục đối chiếu dữ liệu mã hóa và quyền đọc của vai trò runtime trong DB đã phục hồi. Việc quét bằng app ngân hàng và diễn tập triển khai HTTPS thuộc nghiệm thu pilot.
+
+### Khôi phục và quay lại sổ cũ
+
+Giữ bản dump PostgreSQL và `ZS_MASTER_KEY` ở hai nơi riêng, ghi lại phiên bản ứng dụng của bản dump. Khi diễn tập, khôi phục vào DB thử riêng, cấp quyền runtime và lấy khóa từ nơi lưu bí mật. Dùng tài khoản chủ trọ đối chiếu công nợ theo kỳ và tải một chứng từ đã lưu trước khi chuyển kết nối thật.
+
+Nếu cần quay lại sổ cũ, tạm dừng ghi thu và đối soát mới, xuất công nợ và các khoản chờ, rồi đối chiếu những giao dịch phát sinh sau bản chốt gần nhất. Người phụ trách xác nhận đã chuyển hoặc xử lý từng khoản trước khi mở lại ghi sổ. Giữ bản dump của trạng thái khi dừng để truy lại các giao dịch chênh lệch.
 
 Xem [blueprint sản phẩm](docs/ZENTRASPACE-BLUEPRINT.md) và [backlog pilot](tasks/todo.md).
 

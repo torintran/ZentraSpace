@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,7 +23,7 @@ func (a *App) invoice(w http.ResponseWriter, r *http.Request) {
 		a.problem(w, r, err)
 		return
 	}
-	p := Page{Screen: "invoice", Role: s.role, CSRF: hash(id + ":csrf"), SMTP: settings}
+	p := Page{Screen: "invoice", Role: s.role, CSRF: hash(id + ":csrf"), SMTP: settings, ManualInvite: !a.secure}
 	if r.URL.Query().Get("saved") == "credit" {
 		p.Message = "Đã cập nhật khoản tiền dư."
 	}
@@ -48,7 +49,7 @@ func (a *App) invoice(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for _, v := range b.Invites {
-			if v.InvoiceID == p.Invoice.ID && !v.Revoked && !v.PendingDelivery && time.Now().Before(v.Expires) {
+			if v.InvoiceID == p.Invoice.ID && v.usable(time.Now(), a.secure) {
 				p.Invites = append(p.Invites, v)
 			}
 		}
@@ -71,8 +72,25 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	period := periodOf(r.URL.Query().Get("period"))
+	pending := r.URL.Query().Get("view") == "pending"
+	filename := "cong-no-" + period + ".csv"
 	var rows = [][]string{{"Phòng", "Kỳ", "Tổng bảng kê (VND)", "Đã tất toán ròng (VND)", "Còn thiếu (VND)", "Thu dư (VND)", "Điều chỉnh giảm (VND)", "Phải thu sau điều chỉnh (VND)", "Tiền dư đã chuyển (VND)", "Tiền dư có thể chuyển (VND)"}}
 	err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
+		if pending {
+			filename = "khoan-nhan-cho-doi-soat-" + period + ".csv"
+			rows = [][]string{{"Ngày giao dịch", "Mã giao dịch", "Đuôi tài khoản nhận", "Số tiền (VND)", "Nội dung", "Phương thức"}}
+			for _, transfer := range b.Transfers {
+				if transfer.InvoiceID == "" && strings.HasPrefix(transfer.Date, period+"-") {
+					method := "Chuyển khoản"
+					if transfer.ManualCash {
+						method = "Tiền mặt"
+					}
+					rows = append(rows, []string{transfer.Date, plainCSV(transfer.Reference), plainCSV(transfer.AccountSuffix),
+						strconv.FormatInt(transfer.Amount, 10), plainCSV(transfer.Memo), method})
+				}
+			}
+			return nil
+		}
 		for _, i := range b.Invoices {
 			if i.Issued && i.Period == period {
 				c, reduced := i.totals()
@@ -87,7 +105,7 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", "attachment; filename=cong-no-"+period+".csv")
+	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 	w.Write([]byte("\xef\xbb\xbf"))
 	csvOut := csv.NewWriter(w)
 	if err = csvOut.WriteAll(rows); err != nil {

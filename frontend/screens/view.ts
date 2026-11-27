@@ -138,6 +138,7 @@ export type Invoice = {
   CommonFeeLabel: string;
   CommonFee: number;
   RoomFees?: FeeLine[];
+  ResidentShares?: {Name: string; Days: number; Amount: number}[];
   Rent: number;
   ElectricRate: number;
   WaterRate: number;
@@ -177,6 +178,7 @@ type Cash = {
 };
 type BankAccount = { BIN: string; Account: string; Holder: string };
 type BankTransfer = {
+  ManualCash?: boolean;
   ID: string;
   AccountSuffix: string;
   Reference: string;
@@ -231,6 +233,7 @@ type Dashboard = {
     | null;
 };
 export type PageData = {
+  ResidentSplitMode?: string;
   MeterStaffNamePrefix: string;
   MeterStaff: { Username: string; Revision: string; SiteIDs: string[]; Disabled: boolean }[] | null;
   StaffChanges: { Username: string; Actor: string; Operation: string; At: string }[] | null;
@@ -248,6 +251,7 @@ export type PageData = {
   LeaseCount: number;
   LeaseEmails: Record<string, string> | null;
   VerificationEmail: string;
+  ManualInvite?: boolean;
   CodeDelivery: string;
   ExpiringLeases: {RoomID: string; RoomName: string; Tenant: string; EndsOn: string; NextPeriod: string}[] | null;
   RenewPeriod: string;

@@ -37,6 +37,7 @@ type Page struct {
 	RenewPeriod                                                               string
 	LeaseEmails                                                               map[string]string
 	VerificationEmail, CodeDelivery                                           string
+	ManualInvite                                                              bool
 	RoomDeleteReason                                                          string
 	PolicyPreview                                                             *PolicyPreview
 	RoomPolicyFee                                                             FeeLine
@@ -47,6 +48,7 @@ type Page struct {
 	SelectedSite                                                              string
 	RoomSite                                                                  *SiteView
 	Residents                                                                 []Resident
+	ResidentSplitMode                                                         string
 	RoomTimeline                                                              []RoomEvent
 	PolicyMutable, HasPhoto                                                   bool
 	Screen, Role, Tab, Period, Error, Message, CSRF, InviteID, ShareURL, Code string

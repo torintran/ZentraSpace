@@ -155,7 +155,7 @@ func (m *verificationSMTP) connect(ctx context.Context) (*smtp.Client, error) {
 
 func (a *App) sendInviteCode(w http.ResponseWriter, r *http.Request, org, csrf string) {
 	if !a.allow("invite-email:"+org, 12, time.Minute) {
-		a.problem(w, r, inputError{errors.New("Gửi mã email chưa sẵn sàng. Hãy đợi hoặc dùng cách gửi mã thủ công.")})
+		a.problem(w, r, inputError{errors.New("Gửi mã email chưa sẵn sàng. Hãy thử lại sau một phút.")})
 		return
 	}
 	configuration, err := a.readSMTP(r.Context())
@@ -165,12 +165,12 @@ func (a *App) sendInviteCode(w http.ResponseWriter, r *http.Request, org, csrf s
 	}
 	mailer := a.smtpMailer(configuration)
 	if mailer == nil {
-		a.problem(w, r, inputError{errors.New("Hệ thống chưa bật SMTP. Bạn có thể gửi mã thủ công.")})
+		a.problem(w, r, inputError{errors.New("Hãy bật SMTP trước khi gửi mã qua email.")})
 		return
 	}
 	now := time.Now()
 	invoiceID, code := r.Form.Get("id"), accessCode()
-	v := Invite{ID: token(), InvoiceID: invoiceID, CodeHash: hash(code), Expires: now.Add(24 * time.Hour), PendingDelivery: true}
+	v := Invite{ID: token(), InvoiceID: invoiceID, CodeHash: hash(code), Expires: now.Add(24 * time.Hour), PendingDelivery: true, RegisteredChannel: true}
 	p := Page{Screen: "invite", Role: "owner", CSRF: csrf}
 	var to string
 	err = a.store.book(r.Context(), org, true, func(b *Book) error {
@@ -233,7 +233,7 @@ func (a *App) sendInviteCode(w http.ResponseWriter, r *http.Request, org, csrf s
 		return
 	}
 	if deliveryErr != nil {
-		a.problem(w, r, inputError{errors.New("Không gửi được mã qua email. Hãy thử lại hoặc tạo link với mã thủ công.")})
+		a.problem(w, r, inputError{errors.New("Không gửi được mã qua email. Hãy kiểm tra cấu hình SMTP rồi thử lại.")})
 		return
 	}
 	p.CodeDelivery = to

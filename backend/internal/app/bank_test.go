@@ -5,6 +5,27 @@ import (
 	"testing"
 )
 
+func TestUnallocatedCash(t *testing.T) {
+	b := Book{Invoices: []Invoice{{ID: "invoice", Issued: true, Total: 100000}}}
+	key := token()
+	for range 2 {
+		if err := b.receiveCash(key, "2026-11-20", "PT01", "", 50000); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(b.Transfers) != 1 || b.Invoices[0].Remaining() != 100000 {
+		t.Fatal("an unallocated receipt was duplicated or changed the invoice")
+	}
+	for range 2 {
+		if err := b.reconcile(key, "invoice", ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if b.Invoices[0].Remaining() != 50000 || b.Invoices[0].Entries[0].Method != cashPayment {
+		t.Fatal("allocated receipt was duplicated or lost its payment method")
+	}
+}
+
 func TestVietQRKnownPayload(t *testing.T) {
 	bank := BankAccount{BIN: "970407", Account: "19036688889999", Holder: "TEST"}
 	got, err := vietQR(bank, 2500000, "HD0012")

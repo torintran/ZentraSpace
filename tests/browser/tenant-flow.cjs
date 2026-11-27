@@ -663,6 +663,55 @@ async function run() {
       assert.equal(await owner.locator('#room-contracts article').count(), 1);
       await owner.goto(`${app}/?tab=rooms&period=${period}`);
       console.log('PASS Playwright: six stable contract fixtures, eighteen-month term and renewal history');
+      await owner.goto(`${app}/?tab=billing&period=${period}&filter=draft`);
+      const viewport = owner.viewportSize();
+      const summary = owner.getByText('Phát hành nhiều bảng kê', {exact:true});
+      await owner.setViewportSize({width:640, height:450});
+      await summary.focus();
+      await owner.keyboard.press('Shift+Tab');
+      await owner.keyboard.press('Tab');
+      assert.ok(await summary.evaluate(el => el === document.activeElement && el.matches(':focus-visible')));
+      assert.ok(await summary.evaluate(el => {
+        const css = getComputedStyle(el);
+        return css.outlineStyle !== 'none' && parseFloat(css.outlineWidth) >= 2;
+      }));
+      await owner.keyboard.press('Enter');
+      const batch = owner.locator('form[action="/action/issue-batch"]');
+      const publish = batch.getByRole('button', {name:'Phát hành bảng kê đã chọn'});
+      for (const width of [640, 320]) {
+        await owner.setViewportSize({width, height:450});
+        assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth === document.documentElement.clientWidth));
+        const target = await publish.boundingBox();
+        assert.ok(target && target.width >= 44 && target.height >= 44);
+      }
+      const contrast = await publish.evaluate(el => {
+        function luminance(color) {
+          const rgb = color.match(/[\d.]+/g).slice(0, 3).map(Number).map(c => {
+            const x = c / 255;
+            return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+          });
+          return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+        }
+        const style = getComputedStyle(el);
+        const values = [luminance(style.color), luminance(style.backgroundColor)];
+        return { foreground: style.color, background: style.backgroundColor,
+          ratio: (Math.max(...values) + .05) / (Math.min(...values) + .05) };
+      });
+      assert.ok(contrast.ratio >= 4.5, JSON.stringify(contrast));
+      await owner.setViewportSize(viewport);
+      const firstDraft = batch.getByRole('checkbox', {name:/^DEMO-2026-11-P03/});
+      await firstDraft.focus();
+      await owner.keyboard.press('Space');
+      assert.ok(await firstDraft.isChecked());
+      await batch.getByRole('checkbox', {name:/^HD-MAU-2026-11-P03/}).check();
+      await batch.getByRole('checkbox', {name:'Tôi đã kiểm tra các bảng kê đã chọn.'}).check();
+      await batch.getByRole('button', {name:'Phát hành bảng kê đã chọn'}).click();
+      for (const name of ['DEMO-2026-11-P03', 'HD-MAU-2026-11-P03']) {
+        await owner.locator('article').filter({has:owner.getByText(name, {exact:true})})
+          .getByText('Còn phải thu', {exact:true}).waitFor();
+      }
+      await owner.goto(`${app}/?tab=rooms&period=${period}`);
+      console.log('PASS Playwright: batch publishing, keyboard focus, contrast, and 640/320px reflow');
     }
     await owner.getByRole('link', {name:'Thêm phòng', exact:true}).click();
     await fields(owner.locator('form[action="/action/room"]'), {

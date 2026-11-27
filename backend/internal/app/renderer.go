@@ -44,6 +44,8 @@ func invoicePresentation(i *Invoice, shared bool) *invoiceView {
 	}
 	view := &invoiceView{Invoice: *i, Remaining: i.Remaining(), Credit: i.Credit(), NetCollected: i.NetCollected(), NetReduction: i.NetReduction()}
 	if shared {
+		view.ResidentShares = nil
+		view.ResidentPolicyVersion = ""
 		view.Entries = nil
 		view.LeaseTenant = ""
 		view.Reading.Adjustment.Reason = ""

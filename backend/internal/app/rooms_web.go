@@ -122,6 +122,7 @@ func (a *App) roomDetail(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 		p.Residents = b.roomResidents(*p.RoomDetail, p.Period)
+		_, p.ResidentSplitMode = b.residentPolicy(p.RoomDetail.ID, p.Lease.Effective, p.Period)
 		if !p.RoomForm && !p.LeaseForm && !p.CheckoutForm {
 			events := b.roomTimeline(*p.RoomDetail, p.Period, "")
 			p.RoomTimeline = events[:min(len(events), 8)]

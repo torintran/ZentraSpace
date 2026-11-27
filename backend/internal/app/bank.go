@@ -24,6 +24,23 @@ type BankTransfer struct {
 	ID, AccountKey, AccountSuffix, Reference, Date, Memo string
 	Amount                                               int64
 	InvoiceID, EntryKey                                  string
+	ManualCash                                           bool
+}
+
+func (b *Book) receiveCash(key, date, reference, note string, amount int64) error {
+	if _, err := time.Parse("2006-01-02", date); err != nil || len(key) != 48 ||
+		!referencePattern.MatchString(key) || amount <= 0 || amount > 100000000000 ||
+		len(reference) > 80 || len(note) > 240 || strings.ContainsFunc(reference+note, unicode.IsControl) {
+		return errInvalid
+	}
+	if tr := b.transfer(key); tr != nil {
+		if tr.ManualCash && tr.Date == date && tr.Reference == reference && tr.Memo == note && tr.Amount == amount {
+			return nil
+		}
+		return errors.New("Thao tác đã được ghi với thông tin khác.")
+	}
+	b.Transfers = append(b.Transfers, BankTransfer{ID: key, Date: date, Reference: reference, Memo: note, Amount: amount, ManualCash: true})
+	return nil
 }
 
 var (
@@ -183,6 +200,9 @@ func (b *Book) reconcile(transferID, invoiceID, existing string) error {
 		return errors.New("Giao dịch đã được đối soát vào một bút toán khác.")
 	}
 	if existing != "" {
+		if tr.ManualCash {
+			return errors.New("Khoản tiền mặt chờ phân bổ cần được ghi vào bảng kê dưới dạng khoản thu mới.")
+		}
 		eligible := false
 		for _, e := range i.Entries {
 			if e.Key == key && e.Kind == "Thu" && e.Method != cashPayment && e.Amount == tr.Amount {
@@ -198,8 +218,14 @@ func (b *Book) reconcile(transferID, invoiceID, existing string) error {
 				return errors.New("Khoản thu này đã ghép với giao dịch khác.")
 			}
 		}
-	} else if err := b.addEntry(invoiceID, Entry{Key: key, Kind: "Thu", Amount: tr.Amount, Method: transferPayment, Reference: tr.Reference}); err != nil {
-		return err
+	} else {
+		method := transferPayment
+		if tr.ManualCash {
+			method = cashPayment
+		}
+		if err := b.addEntry(invoiceID, Entry{Key: key, Kind: "Thu", Amount: tr.Amount, Method: method, Reference: tr.Reference}); err != nil {
+			return err
+		}
 	}
 	tr.InvoiceID, tr.EntryKey = invoiceID, key
 	return nil

@@ -80,3 +80,20 @@ func TestEmailChangeRevokesPriorInvitationAndPendingCodeCannotVerify(t *testing.
 		t.Fatal("email change did not revoke the prior invitation")
 	}
 }
+
+func TestRegisteredChannelRequiredForSecureSharing(t *testing.T) {
+	now := time.Now()
+	v := Invite{Expires: now.Add(time.Minute)}
+	if !v.usable(now, false) || v.usable(now, true) {
+		t.Fatal("manual or legacy link must only work in local mode")
+	}
+	v.RegisteredChannel = true
+	v.PendingDelivery = true
+	if v.usable(now, true) {
+		t.Fatal("an undelivered invitation became usable")
+	}
+	v.PendingDelivery = false
+	if !v.usable(now, true) || v.usable(v.Expires, true) {
+		t.Fatal("registered invitation must stop working at the expiry boundary")
+	}
+}

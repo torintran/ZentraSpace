@@ -149,7 +149,7 @@ func (a *App) bankReview(w http.ResponseWriter, r *http.Request) {
 			}
 			review.Selected = i
 			for _, entry := range i.Entries {
-				if entry.Kind == "Thu" && entry.Method != cashPayment && entry.Amount == tr.Amount && !linked[entry.Key] && !i.Reversed(entry.Key) {
+				if !tr.ManualCash && entry.Kind == "Thu" && entry.Method != cashPayment && entry.Amount == tr.Amount && !linked[entry.Key] && !i.Reversed(entry.Key) {
 					review.Existing = append(review.Existing, entry)
 				}
 			}
@@ -187,6 +187,14 @@ func (a *App) bankAction(w http.ResponseWriter, r *http.Request) {
 	}
 	err := a.store.book(r.Context(), org, true, func(b *Book) error {
 		switch r.PathValue("operation") {
+		case "cash-receipt":
+			amount, err := number(r, "amount", 1, 100000000000)
+			if err != nil {
+				return err
+			}
+			if err := b.receiveCash(r.Form.Get("key"), r.Form.Get("date"), strings.TrimSpace(r.Form.Get("reference")), strings.TrimSpace(r.Form.Get("note")), amount); err != nil {
+				return inputError{err}
+			}
 		case "mock-settings":
 			if org != pilotOrg || len(a.mockBankSecret) < 32 || b.Bank.BIN != mockBankBIN || b.Bank.Account != mockBankAccount {
 				return errMissing
@@ -252,7 +260,7 @@ func (a *App) sharedBill(r *http.Request) (*Invoice, BankAccount, error) {
 	var bank BankAccount
 	err := a.store.book(r.Context(), org, false, func(b *Book) error {
 		v := b.invite(id)
-		if v != nil && !v.Revoked && v.Used && time.Now().Before(v.Expires) {
+		if v != nil && v.Used && v.usable(time.Now(), a.secure) {
 			invoice = b.invoice(v.InvoiceID)
 			bank = b.Bank
 		}

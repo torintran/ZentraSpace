@@ -103,6 +103,46 @@ ROLLBACK;
         throw 'Restored database exposes books to the runtime role without an organization.'
     }
     'PASS isolated restore preserves encrypted books and documents with runtime read restrictions'
+
+    function Read-RestoredApplication {
+        $client = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+        Invoke-WebRequest "$base/login" -Method Post -Headers @{Origin=$base} -WebSession $client -Body @{
+            account='owner'; password=$config.ZS_OWNER_PASSWORD
+        } | Out-Null
+        $ledger = Invoke-WebRequest "$base/export?period=2026-11" -WebSession $client
+        if (!$ledger.Content.Contains('DEMO-2026-11-P01')) {
+            throw 'Application could not read the expected ledger.'
+        }
+        $result = [ordered]@{ Ledger = $ledger.Content; ReceiptHash = '' }
+        if ($Browser) {
+            $cash = Invoke-WebRequest "$base/cash?period=2026-11" -WebSession $client
+            $receipt = [regex]::Match($cash.Content, 'href="(/cash/receipt/[a-f0-9]{48})"')
+            if (!$receipt.Success) { throw 'Expected attachment from the browser test is missing.' }
+            $file = Invoke-WebRequest "$base$($receipt.Groups[1].Value)" -WebSession $client
+            $result.ReceiptHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($file.RawContentStream.ToArray()))
+        }
+        ConvertTo-Json -Compress -InputObject $result
+    }
+
+    $before = Read-RestoredApplication
+    docker @compose stop web
+    docker @compose exec -T db psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'ALTER DATABASE zentraspace RENAME TO zentraspace_original; ALTER DATABASE zentraspace_restore RENAME TO zentraspace'
+    try {
+        docker @compose up -d --no-deps --wait web
+        if ((Read-RestoredApplication) -cne $before) {
+            throw 'Application output differs after switching to the restored database.'
+        }
+        'PASS application decrypts restored ledger and any tested attachment with the original key'
+    }
+    finally {
+        docker @compose stop web
+        docker @compose exec -T db psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'ALTER DATABASE zentraspace RENAME TO zentraspace_restore; ALTER DATABASE zentraspace_original RENAME TO zentraspace'
+        docker @compose up -d --no-deps --wait web
+    }
+    if ((Read-RestoredApplication) -cne $before) {
+        throw 'Application output differs after switching back to the original database.'
+    }
+    'PASS rollback restores access to the original ledger and any tested attachment'
 }
 finally {
     try {

@@ -7,7 +7,7 @@ import {
   FieldInput,
   Panel,
 } from './components';
-import { configured, has, itemKey, money, suffix } from './view';
+import { configured, has, itemKey, money, randomKey, suffix } from './view';
 import type { PageData, Invoice } from './view';
 
 export function BankScreen({ page }: { page: PageData }) {
@@ -38,6 +38,18 @@ export function BankScreen({ page }: { page: PageData }) {
               Đã đối soát
             </a>
           </nav>
+          <details>
+            <summary>Ghi tiền mặt chưa phân bổ</summary>
+            <form method="post" action="/bank/cash-receipt" className="form">
+              <input type="hidden" name="csrf" value={page.CSRF} />
+              <input type="hidden" name="key" value={randomKey()} />
+              <label>Ngày nhận<FieldInput name="date" type="date" required /></label>
+              <label>Số tiền (đồng)<FieldInput name="amount" type="number" min={1} max={100000000000} required /></label>
+              <label>Mã chứng từ<FieldInput name="reference" maxLength={80} /></label>
+              <label>Ghi chú<FieldInput name="note" maxLength={80} /></label>
+              <Action>Lưu khoản nhận</Action>
+            </form>
+          </details>
           {has(bank.Transfers) ? (
             bank.Transfers.map((transfer, index) => (
               <Fragment key={itemKey(transfer, index)}>
@@ -45,8 +57,7 @@ export function BankScreen({ page }: { page: PageData }) {
                   <div>
                     <strong>{money(transfer.Amount)}</strong>
                     <p>
-                      {transfer.Date} · {transfer.Reference} · TK …
-                      {transfer.AccountSuffix}
+                      {transfer.Date} · {transfer.Reference} · {transfer.ManualCash ? 'Tiền mặt' : 'TK …' + transfer.AccountSuffix}
                     </p>
                     {has(transfer.Memo) ? (
                       <>
