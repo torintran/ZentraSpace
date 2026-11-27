@@ -146,9 +146,17 @@ export function RoomResidents({
               <FieldInput
                 name="joinedOn"
                 type="date"
-                min={page.Period + '-01'}
+                min={
+                  page.Lease.StartOn > page.Period + '-01'
+                    ? page.Lease.StartOn
+                    : page.Period + '-01'
+                }
                 max={page.PeriodEnd}
-                defaultValue={page.PeriodDate}
+                defaultValue={
+                  page.Lease.StartOn > page.PeriodDate
+                    ? page.Lease.StartOn
+                    : page.PeriodDate
+                }
                 required
               />
             </label>

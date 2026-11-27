@@ -190,6 +190,9 @@ func (b *Book) addResident(room *Room, ownerPeriod string, resident Resident) er
 	if err != nil || resident.JoinedOn[:7] != ownerPeriod {
 		return errors.New("Ngày vào ở phải thuộc kỳ đang xem.")
 	}
+	if resident.JoinedOn < terms.startDate() {
+		return errors.New("Ngày vào ở phải từ ngày bắt đầu hợp đồng trở đi.")
+	}
 	if len(b.roomResidents(*room, ownerPeriod)) >= 20 {
 		return errors.New("Hồ sơ hỗ trợ tối đa 20 người đang ở mỗi phòng.")
 	}

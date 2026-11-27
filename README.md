@@ -55,9 +55,9 @@ Trong **Mẫu giá và phí**, chọn **Áp dụng mẫu cho nhiều phòng**, c
 
 Trong **Phòng và hợp đồng**, có thể tạo phòng trước và để trống người đại diện, kể cả khi nhập từ CSV. Đặt giá thuê và đơn giá điện nước khi tạo hoặc chỉnh sửa phòng, rồi mở **Giá và phí** để thêm phí riêng định kỳ. Phòng trống xuất hiện trong danh sách phòng và chưa vào hàng chờ nhập công tơ hoặc chốt kỳ thu.
 
-Khi có khách, chọn **Tiếp nhận người thuê**. Giá mặc định lấy từ hồ sơ phòng. Có thể nhập thời hạn, số điện thoại và ngày ký. Sau khi lưu, mở **Hợp đồng** để đính kèm một tệp PDF, JPG hoặc PNG tối đa 8 MB cho kỳ hiệu lực tương ứng. PostgreSQL giữ tệp dưới dạng mã hóa. Chỉ chủ trọ thuộc tổ chức của phòng tải được.
+Khi có khách, chọn **Tiếp nhận người thuê** và nhập ngày bắt đầu hiệu lực. Giá mặc định lấy từ hồ sơ phòng. Có thể nhập thời hạn tính theo kỳ tháng, số điện thoại và ngày ký. Sau khi lưu, mở **Hợp đồng** để lưu hợp đồng chính và các phụ lục. Mỗi hợp đồng lưu tối đa 12 tệp PDF, JPG hoặc PNG, mỗi tệp tối đa 8 MB. PostgreSQL lưu cả tệp và tên phụ lục dưới dạng mã hóa. Chỉ chủ trọ thuộc tổ chức của phòng tải được.
 
-Để đổi người đại diện hoặc đơn giá, chọn **Thêm hợp đồng** trong hồ sơ phòng. Hợp đồng có hiệu lực tính phí từ ngày đầu tháng đã chọn. Bảng kê nháp dùng điều khoản của kỳ tương ứng. Bảng kê đã phát hành giữ nguyên nội dung.
+Để đổi người đại diện hoặc đơn giá, chọn **Thêm hợp đồng** trong hồ sơ phòng. Khi tiếp nhận giữa tháng, tiền thuê kỳ đầu tính theo số ngày từ ngày bàn giao, còn điện nước tính từ chỉ số tại thời điểm bàn giao. Khi trả trong cùng tháng, tiền thuê tính đến hết ngày trả. Bản hiện tại hỗ trợ một hợp đồng cho mỗi phòng trong một kỳ tháng. Bảng kê đã phát hành giữ nguyên nội dung.
 
 Trong **Phòng và hợp đồng**, mục **Hợp đồng sắp hết hạn** hiển thị các hợp đồng kết thúc trong 60 ngày tới. Chọn **Ký lại** để mở form với kỳ hiệu lực tiếp theo. Hợp đồng đã trả phòng hoặc đã có hợp đồng tiếp nối sẽ được bỏ qua.
 

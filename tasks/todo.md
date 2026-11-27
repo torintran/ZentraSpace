@@ -29,10 +29,10 @@ Trạng thái ngày 27/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. C
 | F01 | [x] Tạo môi trường phát triển tối thiểu | G03 | Docker dựng cổng Go, frontend Next.js và PostgreSQL từ DB trống. CI chạy Go test, build, migration và smoke test HTTP với dữ liệu tổng hợp. |
 | F02 | [ ] Đăng nhập và cô lập tổ chức | F01 | Đã gắn tài khoản với sổ theo tổ chức và kiểm hai chủ trọ qua phòng, bảng kê, CSV, ghi thu, ngân hàng và link riêng. Còn quyền nhiều tòa trong một tổ chức, quản trị tài khoản và audit truy cập hỗ trợ. |
 | F03 | [ ] Quản lý tòa và danh sách phòng | F02 | Tạo một tòa, lưu mã phòng duy nhất trong tòa, hiển thị và tìm phòng trên điện thoại. Test retry/validation và truy cập chéo org. |
-| F04 | [ ] Ghi hợp đồng và đại diện | F03 | Đã có lịch điều khoản theo tháng, ký lại, và bắt đầu hợp đồng sau tháng trống bằng chỉ số bàn giao. Còn ngày vào/ra giữa tháng và tính theo ngày với phân đoạn công tơ. |
+| F04 | [ ] Ghi hợp đồng và đại diện | F03 | Có ngày vào/ra giữa tháng, tính tiền thuê theo ngày và ghi chỉ số điện nước lúc bàn giao. Còn hỗ trợ hai hợp đồng nối tiếp trong cùng tháng và phân đoạn công tơ tương ứng. |
 | F05 | [ ] Chuyển dữ liệu đầu kỳ có hỗ trợ | F04 | Nhập bảng do pilot cung cấp, báo lỗi từng dòng, đối chiếu số phòng/hợp đồng/chỉ số/số dư mở. Chạy lại cùng lần nhập giữ số bản ghi; lưu biên bản đối chiếu. |
 | F06 | [ ] Nhập và xác nhận điện nước | F04 | Chủ trọ ghi mốc bàn giao hoặc thay một công tơ mỗi loại trong kỳ có lý do. Bảng kê tách số cũ/mới và khóa khi phát hành. Còn mã/định danh công tơ, ghi nhận người duyệt và hàng chờ chênh giữa công tơ tổng và phòng. |
-| F07 | [ ] Tính và tạo lô bảng kê nháp | F04, F06 | Đã tính kỳ đủ bằng VND nguyên, có phí chung và phí riêng từng phòng thu một lần hoặc hằng tháng. Còn tính kỳ lẻ và trạng thái chờ xử lý chênh lệch công tơ. |
+| F07 | [ ] Tính và tạo lô bảng kê nháp | F04, F06 | Đã tính kỳ đủ và kỳ lẻ bằng VND nguyên, có phí chung và phí riêng từng phòng thu một lần hoặc hằng tháng. Còn trạng thái chờ xử lý chênh lệch công tơ. |
 | F08 | [x] Phát hành bất biến | F07 | Bản xem trước được kiểm phiên bản trong transaction phát hành. Kiểm phát hành đồng thời, bỏ qua phòng thiếu chỉ số và khóa chỉ số của bảng kê đã phát hành. |
 | F14 | [ ] Xem bảng kê riêng sau xác minh | F08, G05 | Link có hạn/thu hồi và cần xác minh qua kênh đã đăng ký. Test chuyển tiếp, đọc sai phòng, hết hạn và thu hồi khi đã mở phiên. Người thuê đã xác minh đọc được mốc điện nước, cách tính, tổng và hạn trên web di động. |
 | F09 | [ ] Gửi lời nhắc qua Zalo | F14 | Nội dung copy và preview không có số tiền, tên hoặc số phòng. Người nhận mở link để xác minh. Đối chiếu màn đã xác minh với bảng kê chốt trên điện thoại Android/iPhone. |
@@ -85,4 +85,4 @@ VietQR riêng và duyệt sao kê thủ công đã qua kiểm thử cục bộ v
 | 1 | Mẫu giá và phí dùng chung | Có xem trước và gán hàng loạt theo dãy hoặc nhóm chưa gán dãy, theo kỳ hiệu lực. Phòng đang chuẩn bị nhận bản sao giá, lịch sử phòng lưu lần áp dụng. |
 | 2 | Bàn giao và trả phòng | Có xem trước và xác nhận ngày trả, chỉ số cuối, khoản cọc cấn hoặc hoàn. Phòng chuyển sang trống ngay khi xác nhận và có thể lập hợp đồng mới từ tháng sau. Còn bàn giao ngày vào giữa kỳ và hồ sơ ảnh hoặc biên bản. |
 | 3 | Quản lý hợp đồng sắp hết hạn | Có danh sách 60 ngày và luồng ký lại điền sẵn kỳ bắt đầu, giữ lịch sử hợp đồng. |
-| 4 | Hồ sơ nhiều người ở và nhiều tệp | Quản lý người đại diện, người ở cùng và phụ lục. Chủ trọ tải đúng tệp của đúng kỳ theo quyền tổ chức. |
+| 4 | Hồ sơ nhiều người ở và nhiều tệp | Quản lý người đại diện, người ở cùng, hợp đồng chính và phụ lục có tên. Chủ trọ tải đúng tệp của đúng kỳ theo quyền tổ chức. |

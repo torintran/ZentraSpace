@@ -198,7 +198,12 @@ export function InvoiceDetails({ invoice }: { invoice: Invoice }) {
       <h2>Chi tiết khoản thu</h2>
       <dl className="charges">
         <div>
-          <dt>Tiền thuê</dt>
+          <dt>
+            Tiền thuê
+            {invoice.RentMonthDays
+              ? ` (${invoice.RentDays}/${invoice.RentMonthDays} ngày)`
+              : ''}
+          </dt>
           <dd>{money(invoice.Rent)}</dd>
         </div>
         <div>

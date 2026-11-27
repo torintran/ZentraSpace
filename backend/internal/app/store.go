@@ -112,9 +112,18 @@ func migrate(ctx context.Context) error {
   organization text NOT NULL REFERENCES books(organization),
   room_id text NOT NULL,
   effective text NOT NULL,
+  document_id text NOT NULL DEFAULT '',
+  sealed_label bytea,
+  created_at timestamptz NOT NULL DEFAULT now(),
   sealed bytea NOT NULL,
-  PRIMARY KEY (organization, room_id, effective)
+  PRIMARY KEY (organization, room_id, effective, document_id)
  );
+ DO $$ BEGIN
+  IF NOT EXISTS (SELECT FROM pg_attribute WHERE attrelid='lease_documents'::regclass AND attname='document_id' AND NOT attisdropped) THEN
+   ALTER TABLE lease_documents ADD COLUMN document_id text NOT NULL DEFAULT '', ADD COLUMN sealed_label bytea, ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
+   ALTER TABLE lease_documents DROP CONSTRAINT lease_documents_pkey, ADD PRIMARY KEY (organization, room_id, effective, document_id);
+  END IF;
+ END $$;
  ALTER TABLE lease_documents ENABLE ROW LEVEL SECURITY;
  ALTER TABLE lease_documents FORCE ROW LEVEL SECURITY;
  DROP POLICY IF EXISTS organization_scope ON lease_documents;

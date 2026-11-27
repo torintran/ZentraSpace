@@ -195,8 +195,15 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			}
 		case "lease":
 			terms := LeaseTerms{RoomID: id, Effective: value("effective"), Tenant: value("tenant"),
-				Phone: value("phone"), SignedOn: value("signedOn"),
+				Phone: value("phone"), SignedOn: value("signedOn"), StartOn: value("startOn"),
 				Renewal: value("renewal") == "yes"}
+			if terms.StartOn != "" {
+				start, err := time.Parse(time.DateOnly, terms.StartOn)
+				if err != nil || (terms.Effective != "" && terms.Effective != start.Format("2006-01")) {
+					return errInvalid
+				}
+				terms.Effective = start.Format("2006-01")
+			}
 			if value("useScheduledPrice") == "yes" {
 				room := b.room(id)
 				if room == nil {

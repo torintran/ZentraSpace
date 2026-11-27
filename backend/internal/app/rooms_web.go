@@ -149,16 +149,17 @@ func (a *App) roomDetail(w http.ResponseWriter, r *http.Request) {
 		a.problem(w, r, err)
 		return
 	}
-	if len(p.LeaseHistory) > 0 || (!p.RoomArchive && p.LeaseCount > 0 && p.RoomDeleteReason == "") {
-		documents, err := a.store.leaseDocumentPeriods(r.Context(), s.organization, p.RoomDetail.ID)
+	if len(p.LeaseHistory) > 0 {
+		effective := make([]string, 0, len(p.LeaseHistory))
+		for _, lease := range p.LeaseHistory {
+			effective = append(effective, lease.Effective)
+		}
+		documents, err := a.store.leaseDocumentFiles(r.Context(), s.organization, p.RoomDetail.ID, effective)
 		if err != nil {
 			a.problem(w, r, err)
 			return
 		}
-		p.LeaseDocuments = make(map[string]bool)
-		for _, lease := range p.LeaseHistory {
-			p.LeaseDocuments[lease.Effective] = documents[lease.Effective]
-		}
+		p.LeaseDocuments = documents
 		if len(documents) > 0 && p.RoomDeleteReason == "" {
 			p.RoomDeleteReason = "Phòng đã có tệp hợp đồng."
 		}

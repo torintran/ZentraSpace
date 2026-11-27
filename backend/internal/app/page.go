@@ -51,7 +51,7 @@ type Page struct {
 	RoomFees                                                                  []RoomFee
 	Lease                                                                     LeaseTerms
 	LeaseHistory                                                              []LeaseTerms
-	LeaseDocuments                                                            map[string]bool
+	LeaseDocuments                                                            map[string][]LeaseAttachment
 	LeaseForm                                                                 bool
 	RoomForm, LockOpening, LockRates                                          bool
 	Dashboard                                                                 Dashboard

@@ -80,32 +80,32 @@ export function RoomScreen({ page }: { page: PageData }) {
         <>
           <Panel className="card room-form" as="section">
             <p className="subtle">
-              Điều khoản bắt đầu vào ngày đầu tháng. Chọn kỳ sau bảng kê đã phát
-              hành gần nhất.
+              Chọn ngày bàn giao phòng. Nếu bắt đầu giữa tháng, tiền thuê kỳ đầu
+              tính theo số ngày và điện nước tính từ chỉ số bàn giao.
             </p>
             <form method="post" action="/action/lease" className="form">
               <input type="hidden" name="csrf" value={page.CSRF} />
               <input type="hidden" name="id" value={room.ID} />
               <label>
-                Kỳ bắt đầu hiệu lực
+                Ngày bắt đầu hiệu lực
                 <FieldInput
-                  name="effective"
-                  type="month"
-                  min={page.NextLeasePeriod || room.Start}
+                  name="startOn"
+                  type="date"
+                  min={(page.NextLeasePeriod || room.Start) + '-01'}
                   defaultValue={
-                    page.RenewPeriod ||
-                    page.NextLeasePeriod ||
+                    (page.RenewPeriod && page.RenewPeriod + '-01') ||
+                    (page.NextLeasePeriod && page.NextLeasePeriod + '-01') ||
                     (occupied
                       ? undefined
                       : page.Period < room.Start
-                        ? room.Start
-                        : page.Period)
+                        ? room.Start + '-01'
+                        : page.PeriodDate)
                   }
                   required
                 />
               </label>
               <label>
-                Thời hạn (tháng, để trống nếu chưa xác định)
+                Thời hạn theo kỳ tháng (tính cả kỳ đầu, có thể để trống)
                 <FieldInput
                   name="months"
                   type="number"

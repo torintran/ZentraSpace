@@ -32,6 +32,9 @@ func (b *Book) meterOpening(room Room, period string) (meterOpening, error) {
 	if !lease.ActiveAt(period) {
 		return meterOpening{}, errors.New("Phòng không có hợp đồng hiệu lực trong kỳ này.")
 	}
+	if lease.Effective == period && lease.StartOn != "" {
+		return meterOpening{Handover: true}, nil
+	}
 	if period == room.Start {
 		return meterOpening{Electric: room.Electric, Water: room.Water}, nil
 	}
@@ -72,9 +75,9 @@ func (b *Book) readWithAdjustment(id, period string, electric, water int64, adju
 	}
 	if opening.Handover != adjustment.Handover {
 		if opening.Handover {
-			return errors.New("Cần chỉ số bàn giao đầu kỳ cho hợp đồng sau thời gian phòng trống.")
+			return errors.New("Cần chỉ số điện nước tại thời điểm bàn giao phòng.")
 		}
-		return errors.New("Chỉ được nhập mốc bàn giao cho kỳ đầu của hợp đồng sau thời gian phòng trống.")
+		return errors.New("Chỉ nhập mốc bàn giao khi hệ thống yêu cầu ở kỳ đầu hợp đồng.")
 	}
 	adjustment.Reason = strings.TrimSpace(adjustment.Reason)
 	if adjustment.Handover || adjustment.Electric.Replaced || adjustment.Water.Replaced {

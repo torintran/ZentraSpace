@@ -3,31 +3,55 @@ package app
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 )
 
 const leaseDocumentBytes = 8 << 20
+const leaseDocumentLimit = 12
 
-func (s *Store) leaseDocumentPeriods(ctx context.Context, org, room string) (map[string]bool, error) {
-	periods := make(map[string]bool)
+type LeaseAttachment struct{ ID, Label string }
+
+func leaseAttachmentScope(org, room, period, id string) string {
+	scope := "!lease-document:" + org + ":" + room + ":" + period
+	if id != "" {
+		scope += ":" + id
+	}
+	return scope
+}
+
+func (s *Store) leaseDocumentFiles(ctx context.Context, org, room string, effective []string) (map[string][]LeaseAttachment, error) {
+	periods := make(map[string][]LeaseAttachment)
 	err := s.withOrganizationTx(ctx, org, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, "SELECT effective FROM lease_documents WHERE organization=$1 AND room_id=$2", org, room)
+		rows, err := tx.Query(ctx, "SELECT effective, document_id, sealed_label FROM lease_documents WHERE organization=$1 AND room_id=$2 AND effective=ANY($3) ORDER BY created_at, document_id", org, room, effective)
 		if err != nil {
 			return err
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var period string
-			if err := rows.Scan(&period); err != nil {
+			var period, id string
+			var sealed []byte
+			if err := rows.Scan(&period, &id, &sealed); err != nil {
 				return err
 			}
-			periods[period] = true
+			label := "Hợp đồng chính"
+			if id != "" {
+				data, err := decrypt(s.key, leaseAttachmentScope(org, room, period, id)+":label", sealed)
+				if err != nil {
+					return err
+				}
+				label = string(data)
+			}
+			periods[period] = append(periods[period], LeaseAttachment{ID: id, Label: label})
 		}
 		return rows.Err()
 	})
@@ -43,17 +67,20 @@ func (a *App) leaseDocument(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bạn không có quyền truy cập hợp đồng.", http.StatusForbidden)
 		return
 	}
-	roomID, effective := r.PathValue("id"), r.PathValue("effective")
+	roomID, effective, documentID := r.PathValue("id"), r.PathValue("effective"), r.PathValue("document")
 	if _, err := time.Parse("2006-01", effective); err != nil {
 		http.NotFound(w, r)
 		return
 	}
 	ctx, org := r.Context(), session.organization
-	scope := "!lease-document:" + org + ":" + roomID + ":" + effective
 	if r.Method == http.MethodGet {
+		if _, err := hex.DecodeString(documentID); err != nil || (documentID != "" && len(documentID) != 48) {
+			http.NotFound(w, r)
+			return
+		}
 		var sealed []byte
 		err := a.store.withOrganizationTx(ctx, org, func(tx pgx.Tx) error {
-			return tx.QueryRow(ctx, "SELECT sealed FROM lease_documents WHERE organization=$1 AND room_id=$2 AND effective=$3", org, roomID, effective).Scan(&sealed)
+			return tx.QueryRow(ctx, "SELECT sealed FROM lease_documents WHERE organization=$1 AND room_id=$2 AND effective=$3 AND document_id=$4", org, roomID, effective, documentID).Scan(&sealed)
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			http.NotFound(w, r)
@@ -63,13 +90,17 @@ func (a *App) leaseDocument(w http.ResponseWriter, r *http.Request) {
 			a.problem(w, r, err)
 			return
 		}
-		data, err := decrypt(a.store.key, scope, sealed)
+		data, err := decrypt(a.store.key, leaseAttachmentScope(org, roomID, effective, documentID), sealed)
 		if err != nil {
 			a.problem(w, r, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Content-Disposition", "attachment; filename=hop-dong-"+effective+"."+attachmentFormat(data))
+		filename := "hop-dong-" + effective
+		if documentID != "" {
+			filename = "phu-luc-" + effective + "-" + documentID[:8]
+		}
+		w.Header().Set("Content-Disposition", "attachment; filename="+filename+"."+attachmentFormat(data))
 		w.Write(data)
 		return
 	}
@@ -89,7 +120,21 @@ func (a *App) leaseDocument(w http.ResponseWriter, r *http.Request) {
 		a.problem(w, r, inputError{errors.New("Hợp đồng phải là PDF, JPG hoặc PNG, tối đa 8 MB.")})
 		return
 	}
-	sealed, err := encrypt(a.store.key, scope, data)
+	var sealedLabel []byte
+	if strings.HasSuffix(r.URL.Path, "/attachments") {
+		label := strings.TrimSpace(r.Form.Get("label"))
+		if label == "" || utf8.RuneCountInString(label) > 120 || strings.ContainsFunc(label, unicode.IsControl) {
+			a.problem(w, r, inputError{errors.New("Nhập tên phụ lục hợp lệ, tối đa 120 ký tự.")})
+			return
+		}
+		documentID = hash(leaseAttachmentScope(org, roomID, effective, "") + "\x00" + label + "\x00" + hash(string(data)))[:48]
+		sealedLabel, err = encrypt(a.store.key, leaseAttachmentScope(org, roomID, effective, documentID)+":label", []byte(label))
+		if err != nil {
+			a.problem(w, r, err)
+			return
+		}
+	}
+	sealed, err := encrypt(a.store.key, leaseAttachmentScope(org, roomID, effective, documentID), data)
 	if err != nil {
 		a.problem(w, r, err)
 		return
@@ -101,7 +146,18 @@ func (a *App) leaseDocument(w http.ResponseWriter, r *http.Request) {
 		}) {
 			return errMissing
 		}
-		result, err := tx.Exec(ctx, "INSERT INTO lease_documents (organization,room_id,effective,sealed) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING", org, roomID, effective, sealed)
+		var count int
+		var replay bool
+		if err := tx.QueryRow(ctx, "SELECT count(*), COALESCE(bool_or(document_id=$4),false) FROM lease_documents WHERE organization=$1 AND room_id=$2 AND effective=$3", org, roomID, effective, documentID).Scan(&count, &replay); err != nil {
+			return err
+		}
+		if replay && documentID != "" {
+			return nil
+		}
+		if count >= leaseDocumentLimit {
+			return inputError{errors.New("Mỗi hợp đồng lưu tối đa 12 tệp.")}
+		}
+		result, err := tx.Exec(ctx, "INSERT INTO lease_documents (organization,room_id,effective,document_id,sealed_label,sealed) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING", org, roomID, effective, documentID, sealedLabel, sealed)
 		if err == nil && result.RowsAffected() != 1 {
 			return inputError{errors.New("Hợp đồng đã có tệp đính kèm.")}
 		}

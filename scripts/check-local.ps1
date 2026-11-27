@@ -92,7 +92,7 @@ ROLLBACK;
     docker @compose exec -T db pg_dump -U postgres -Fc -f /tmp/zentraspace-check.dump zentraspace
     docker @compose exec -T db createdb -U postgres zentraspace_restore
     docker @compose exec -T db pg_restore -U postgres --exit-on-error -d zentraspace_restore /tmp/zentraspace-check.dump
-    $snapshot = "SELECT organization, '' AS record_key, sealed FROM books UNION ALL SELECT organization, entry_key, sealed FROM cash_receipts UNION ALL SELECT organization, room_id || '/' || effective, sealed FROM lease_documents UNION ALL SELECT organization, 'photo/' || room_id, sealed FROM room_photos ORDER BY 1, 2"
+    $snapshot = "SELECT organization, '' AS record_key, sealed FROM books UNION ALL SELECT organization, entry_key, sealed FROM cash_receipts UNION ALL SELECT organization, room_id || '/' || effective || '/' || document_id, sealed FROM lease_documents UNION ALL SELECT organization, 'label/' || room_id || '/' || effective || '/' || document_id, sealed_label FROM lease_documents WHERE sealed_label IS NOT NULL UNION ALL SELECT organization, 'photo/' || room_id, sealed FROM room_photos ORDER BY 1, 2"
     $original = docker @compose exec -T db psql -X -U postgres -d zentraspace -At -v ON_ERROR_STOP=1 -c $snapshot
     $restored = docker @compose exec -T db psql -X -U postgres -d zentraspace_restore -At -v ON_ERROR_STOP=1 -c $snapshot
     if (!$original -or ($original -join "`n") -cne ($restored -join "`n")) {

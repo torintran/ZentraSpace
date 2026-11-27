@@ -19,7 +19,7 @@ func (b *Book) roomTimeline(room Room, period, kind string) []RoomEvent {
 		}
 	}
 	for _, terms := range b.leaseHistory(room) {
-		events = append(events, RoomEvent{Date: terms.Effective, Kind: "lease", Title: "Hợp đồng có hiệu lực", Detail: terms.Tenant})
+		events = append(events, RoomEvent{Date: terms.startDate(), Kind: "lease", Title: "Hợp đồng có hiệu lực", Detail: terms.Tenant})
 	}
 	for _, c := range b.Checkouts {
 		if c.RoomID == room.ID {

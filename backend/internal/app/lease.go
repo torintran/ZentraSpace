@@ -11,11 +11,34 @@ type LeaseTerms struct {
 	Rent, ElectricRate, WaterRate int64
 	Months                        int
 	Renewal                       bool
-	Phone, SignedOn               string
+	Phone, SignedOn, StartOn      string
 	PolicyFeeLabel                string
 	PolicyFee                     int64
 	PolicyFeeCaptured             bool
 	EndedOn                       string
+}
+
+func (l LeaseTerms) startDate() string {
+	if l.StartOn != "" {
+		return l.StartOn
+	}
+	return l.Effective + "-01"
+}
+
+func (l LeaseTerms) rentDays(period string) (int, int) {
+	month, err := time.Parse("2006-01", period)
+	if err != nil {
+		return 0, 0
+	}
+	lastDay := month.AddDate(0, 1, -1).Day()
+	first, last := 1, lastDay
+	if day, err := time.Parse(time.DateOnly, l.StartOn); err == nil && day.Format("2006-01") == period {
+		first = day.Day()
+	}
+	if day, err := time.Parse(time.DateOnly, l.EndedOn); err == nil && day.Format("2006-01") == period {
+		last = day.Day()
+	}
+	return max(0, last-first+1), lastDay
 }
 
 func (l LeaseTerms) Until() string {
@@ -91,12 +114,14 @@ func (b *Book) calculateInvoice(room Room, reading Reading, id string) Invoice {
 
 func (b *Book) calculateInvoiceWithLease(room Room, reading Reading, id string, active LeaseTerms) Invoice {
 	room.Rent, room.ElectricRate, room.WaterRate = active.Rent, active.ElectricRate, active.WaterRate
-	if active.EndedOn != "" && active.EndedOn[:7] == reading.Period {
-		day, _ := time.Parse(time.DateOnly, active.EndedOn)
-		days := time.Date(day.Year(), day.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
-		room.Rent = (room.Rent*int64(day.Day()) + int64(days)/2) / int64(days)
+	days, monthDays := active.rentDays(reading.Period)
+	if days < monthDays {
+		room.Rent = (room.Rent*int64(days) + int64(monthDays)/2) / int64(monthDays)
 	}
 	invoice := calculate(room, reading, id)
+	if days < monthDays {
+		invoice.RentDays, invoice.RentMonthDays = days, monthDays
+	}
 	invoice.RoomName = b.roomLabel(room)
 	invoice.LeaseEffective, invoice.LeaseTenant = active.Effective, active.Tenant
 	settings := b.Billing[reading.Period]
@@ -134,6 +159,15 @@ func (b *Book) scheduleLease(terms LeaseTerms) error {
 			return errInvalid
 		}
 	}
+	if terms.StartOn != "" {
+		day, err := time.Parse(time.DateOnly, terms.StartOn)
+		if err != nil || day.Format("2006-01") != terms.Effective {
+			return errInvalid
+		}
+		if day.Day() == 1 {
+			terms.StartOn = ""
+		}
+	}
 	for _, existing := range b.Leases {
 		if existing.RoomID == terms.RoomID && existing.Effective == terms.Effective {
 			terms.PolicyFeeLabel, terms.PolicyFee, terms.PolicyFeeCaptured = existing.PolicyFeeLabel, existing.PolicyFee, existing.PolicyFeeCaptured
@@ -144,6 +178,17 @@ func (b *Book) scheduleLease(terms LeaseTerms) error {
 		}
 	}
 	policy := b.policyAt(*room, terms.Effective)
+	if terms.StartOn != "" {
+		if terms.Renewal {
+			return errors.New("Ký lại hợp đồng bắt đầu từ ngày đầu kỳ. Chọn hợp đồng mới nếu bàn giao giữa tháng.")
+		}
+		if b.leaseAt(*room, terms.Effective).ActiveAt(terms.Effective) {
+			return errors.New("Kỳ bắt đầu đã có hợp đồng. Hoàn tất hợp đồng cũ trước khi tiếp nhận giữa tháng.")
+		}
+		if b.reading(room.ID, terms.Effective) != nil {
+			return errors.New("Kỳ bắt đầu đã có chỉ số. Hãy chọn kỳ khác để ghi mốc bàn giao riêng.")
+		}
+	}
 	terms.PolicyFeeLabel, terms.PolicyFee, terms.PolicyFeeCaptured = policy.FeeLabel, policy.Fee, true
 	if terms.Renewal {
 		start, _ := time.Parse("2006-01", terms.Effective)

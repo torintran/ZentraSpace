@@ -39,6 +39,8 @@ func (a *App) routes() http.Handler {
 	m.HandleFunc("POST /rooms/{id}/photo", a.roomPhoto)
 	m.HandleFunc("GET /rooms/{id}/contracts/{effective}/file", a.leaseDocument)
 	m.HandleFunc("POST /rooms/{id}/contracts/{effective}/file", a.leaseDocument)
+	m.HandleFunc("POST /rooms/{id}/contracts/{effective}/attachments", a.leaseDocument)
+	m.HandleFunc("GET /rooms/{id}/contracts/{effective}/attachments/{document}", a.leaseDocument)
 	m.HandleFunc("GET /bank", a.bankPage)
 	m.HandleFunc("GET /bank/review/{id}", a.bankReview)
 	m.HandleFunc("POST /bank/{operation}", a.bankAction)
@@ -83,7 +85,7 @@ func (a *App) routes() http.Handler {
 				if r.MultipartForm != nil {
 					defer r.MultipartForm.RemoveAll()
 				}
-			} else if strings.HasPrefix(r.URL.Path, "/rooms/") && strings.HasSuffix(r.URL.Path, "/file") {
+			} else if strings.HasPrefix(r.URL.Path, "/rooms/") && (strings.HasSuffix(r.URL.Path, "/file") || strings.HasSuffix(r.URL.Path, "/attachments")) {
 				r.Body = http.MaxBytesReader(w, r.Body, leaseDocumentBytes+4096)
 				err = r.ParseMultipartForm(leaseDocumentBytes + 4096)
 				if r.MultipartForm != nil {

@@ -33,6 +33,7 @@ type Invoice struct {
 	CommonFee                                                         int64
 	RoomFees                                                          []FeeLine `json:",omitempty"`
 	Rent, ElectricRate, WaterRate, ElectricAmount, WaterAmount, Total int64
+	RentDays, RentMonthDays                                           int `json:",omitempty"`
 	Reading                                                           Reading
 	Issued                                                            bool
 	IssuedOn                                                          string `json:",omitempty"`
@@ -277,11 +278,15 @@ func (b *Book) issue(id string) error {
 }
 
 func (i Invoice) Revision() string {
-	return hash(fmt.Sprintf("%q %q %q %q %q %q %q %q %d %d %d %d %d %d %d %d %d %d %d %#v %#v",
+	value := fmt.Sprintf("%q %q %q %q %q %q %q %q %d %d %d %d %d %d %d %d %d %d %d %#v %#v",
 		i.ID, i.RoomID, i.RoomName, i.Period, i.LeaseEffective, i.LeaseTenant, i.DueDate, i.CommonFeeLabel,
 		i.CommonFee, i.Rent, i.ElectricRate, i.WaterRate,
 		i.ElectricAmount, i.WaterAmount, i.Total, i.Reading.ElectricBefore,
-		i.Reading.ElectricAfter, i.Reading.WaterBefore, i.Reading.WaterAfter, i.RoomFees, i.Reading.Adjustment))
+		i.Reading.ElectricAfter, i.Reading.WaterBefore, i.Reading.WaterAfter, i.RoomFees, i.Reading.Adjustment)
+	if i.RentMonthDays > 0 {
+		value += fmt.Sprintf(" %d/%d", i.RentDays, i.RentMonthDays)
+	}
+	return hash(value)
 }
 
 func (i Invoice) NetCollected() int64 { collected, _ := i.totals(); return collected }

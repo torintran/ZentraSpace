@@ -37,6 +37,9 @@ func (b *Book) quoteCheckout(room Room, date string, now time.Time) (CheckoutQuo
 	if !lease.ActiveAt(period) || lease.EndedOn != "" || lease.Tenant == "" {
 		return CheckoutQuote{}, errors.New("Kỳ này không có hợp đồng để trả phòng.")
 	}
+	if date < lease.startDate() {
+		return CheckoutQuote{}, errors.New("Ngày trả phòng phải từ ngày bắt đầu hợp đồng trở đi.")
+	}
 	q := CheckoutQuote{Date: date, Effective: lease.Effective}
 	for _, i := range b.Invoices {
 		if i.RoomID != room.ID {

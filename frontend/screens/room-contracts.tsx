@@ -48,15 +48,18 @@ export function RoomContracts({
         </p>
       )}
       {history.map((lease) => {
-        const document =
-          '/rooms/' + roomId + '/contracts/' + lease.Effective + '/file';
+        const base = '/rooms/' + roomId + '/contracts/' + lease.Effective;
+        const document = base + '/file';
+        const files = page.LeaseDocuments?.[lease.Effective] ?? [];
         const end = until(lease);
         return (
           <article className="contract-row" key={lease.Effective}>
             <div className="list-row">
               <div>
                 <strong>
-                  {'Từ ' + lease.Effective + (end ? ' đến hết ' + end : '')}
+                  {'Từ ' +
+                    (lease.StartOn || lease.Effective) +
+                    (end ? ' đến hết ' + end : '')}
                 </strong>
                 {lease.Tenant && (
                   <p>{lease.Tenant + (lease.Renewal ? ' · Ký lại' : '')}</p>
@@ -77,18 +80,61 @@ export function RoomContracts({
               </div>
               <span>{money(lease.Rent)}/tháng</span>
             </div>
-            {page.LeaseDocuments?.[lease.Effective] ? (
+            {files.some((file) => !file.ID) ? (
               <ActionLink className="button secondary" href={document}>
                 <Download size={18} aria-hidden /> Tải hợp đồng
               </ActionLink>
             ) : (
+              files.length < 12 && (
+                <details>
+                  <summary>
+                    <FilePlus2 size={18} aria-hidden /> Đính kèm tệp hợp đồng
+                  </summary>
+                  <form
+                    method="post"
+                    action={document}
+                    encType="multipart/form-data"
+                    className="form"
+                  >
+                    <input type="hidden" name="csrf" value={page.CSRF} />
+                    {page.RoomArchive && (
+                      <input type="hidden" name="archive" value="1" />
+                    )}
+                    <label>
+                      Tệp hợp đồng (PDF, JPG hoặc PNG, tối đa 8 MB)
+                      <input
+                        type="file"
+                        name="document"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        required
+                      />
+                    </label>
+                    <Action>Lưu tệp hợp đồng</Action>
+                  </form>
+                </details>
+              )
+            )}
+            {files
+              .filter((file) => file.ID)
+              .map((file) => (
+                <div className="actions" key={file.ID}>
+                  <ActionLink
+                    className="button secondary"
+                    href={base + '/attachments/' + file.ID}
+                    leftSection={<Download size={18} aria-hidden />}
+                  >
+                    {file.Label}
+                  </ActionLink>
+                </div>
+              ))}
+            {files.length < 12 && (
               <details>
                 <summary>
-                  <FilePlus2 size={18} aria-hidden /> Đính kèm tệp hợp đồng
+                  <FilePlus2 size={18} aria-hidden /> Thêm phụ lục
                 </summary>
                 <form
                   method="post"
-                  action={document}
+                  action={base + '/attachments'}
                   encType="multipart/form-data"
                   className="form"
                 >
@@ -97,7 +143,11 @@ export function RoomContracts({
                     <input type="hidden" name="archive" value="1" />
                   )}
                   <label>
-                    Tệp hợp đồng (PDF, JPG hoặc PNG, tối đa 8 MB)
+                    Tên phụ lục
+                    <FieldInput name="label" maxLength={120} required />
+                  </label>
+                  <label>
+                    Tệp phụ lục (PDF, JPG hoặc PNG, tối đa 8 MB)
                     <input
                       type="file"
                       name="document"
@@ -105,7 +155,7 @@ export function RoomContracts({
                       required
                     />
                   </label>
-                  <Action>Lưu tệp hợp đồng</Action>
+                  <Action>Lưu phụ lục</Action>
                 </form>
               </details>
             )}

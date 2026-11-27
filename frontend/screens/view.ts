@@ -36,6 +36,7 @@ type Lease = {
   Tenant: string;
   Phone: string;
   SignedOn: string;
+  StartOn: string;
   Effective: string;
   EndedOn: string;
   Rent: number;
@@ -124,6 +125,8 @@ type Entry = {
   Reference?: string;
 };
 export type Invoice = {
+  RentDays?: number;
+  RentMonthDays?: number;
   ID: string;
   RoomID: string;
   RoomName: string;
@@ -302,7 +305,7 @@ export type PageData = {
   RoomFees: RoomFee[] | null;
   Lease: Lease;
   LeaseHistory: Lease[] | null;
-  LeaseDocuments: Record<string, boolean> | null;
+  LeaseDocuments: Record<string, { ID: string; Label: string }[]> | null;
   LeaseForm: boolean;
   RoomForm: boolean;
   LockOpening: boolean;

@@ -52,7 +52,7 @@ async function checkRoomOnboarding(browser, owner, tenant) {
   const lease = owner.locator('form[action="/action/lease"]');
   assert.equal(await lease.locator('[name="rent"]').inputValue(), '1800000');
   await fields(lease, {
-    effective:period, tenant:'Người thuê mới', months:'12', phone:'0900000000', signedOn:'2026-11-01',
+    startOn:period+'-01', tenant:'Người thuê mới', months:'12', phone:'0900000000', signedOn:'2026-11-01',
   });
   await lease.getByRole('button', {name:'Lưu hợp đồng'}).click();
   const contract = owner.locator('#room-contracts article').filter({hasText:'Người thuê mới'});
@@ -69,6 +69,31 @@ async function checkRoomOnboarding(browser, owner, tenant) {
   await upload.locator('[type="file"]').setInputFiles({name:'contract.pdf', mimeType:'application/pdf', buffer:pdf});
   await upload.getByRole('button', {name:'Lưu tệp hợp đồng'}).click();
   await contract.getByRole('link', {name:'Tải hợp đồng'}).waitFor();
+  const appendix = Buffer.from('%PDF-1.4\n% ZentraSpace synthetic appendix\n%%EOF\n');
+  await contract.getByText('Thêm phụ lục', {exact:true}).click();
+  const form = contract.locator('form[action$="/attachments"]');
+  const appendixPath = await form.getAttribute('action');
+  const label = 'Biên bản bàn giao';
+  await fields(form, {label});
+  await form.locator('input[type=file]').setInputFiles({name:'appendix.pdf', mimeType:'application/pdf', buffer:appendix});
+  await form.getByRole('button', {name:'Lưu phụ lục'}).click();
+  const appendixLink = contract.getByRole('link', {name:label, exact:true});
+  const download = await appendixLink.getAttribute('href');
+  const replay = await owner.request.post(app + appendixPath, {headers:{Origin:app}, multipart:{csrf, label, document:{name:'same.pdf', mimeType:'application/pdf', buffer:appendix}}});
+  assert.equal(replay.status(), 200);
+  await owner.reload();
+  assert.equal(await appendixLink.count(), 1);
+  const appendixFile = await owner.request.get(app + download);
+  assert.equal(appendixFile.status(), 200);
+  assert.ok((await appendixFile.body()).equals(appendix));
+  assert.equal((await tenant.request.get(app + download, {maxRedirects:0})).status(), 303);
+  const archive = new URL(owner.url());
+  archive.searchParams.set('history','1');
+  archive.searchParams.set('kind','contracts');
+  await owner.goto(archive.toString());
+  await appendixLink.waitFor();
+  await owner.goto(roomURL);
+  console.log('PASS Playwright: encrypted contract attachments, retry, archive and anonymous access');
   await contract.getByText('Email xác minh bảng kê', {exact:true}).click();
   const contact = contract.locator('form[action="/action/lease-email"]');
   await fields(contact, {email:'tenant@example.test'});
@@ -235,7 +260,7 @@ async function checkPropertyWorkspace(browser, owner, tenant) {
   await owner.getByRole('link', {name:'Tiếp nhận người thuê', exact:true}).first().click();
   const lease = owner.locator('form[action="/action/lease"]');
   assert.equal(await lease.locator('[name="rent"]').inputValue(), '1200000');
-  await fields(lease, {effective:period, tenant:'Người đại diện dãy mẫu'});
+  await fields(lease, {startOn:period+'-01', tenant:'Người đại diện dãy mẫu'});
   await lease.getByRole('button', {name:'Lưu hợp đồng'}).click();
   for (const person of ['Người ở cùng 01','Người ở cùng 02']) {
     await owner.getByText('Thêm người ở cùng', {exact:true}).click();
@@ -285,7 +310,7 @@ async function checkPropertyWorkspace(browser, owner, tenant) {
   const scheduledLease = owner.locator('form[action="/action/lease"]');
   const tariff = scheduledLease.getByRole('checkbox', {name:'Dùng giá theo kỳ hiệu lực đã chọn'});
   assert.ok(await tariff.isChecked());
-  await fields(scheduledLease, {effective:'2026-12', tenant:'Người thuê dùng mẫu'});
+  await fields(scheduledLease, {startOn:'2026-12-01', tenant:'Người thuê dùng mẫu'});
   await scheduledLease.getByRole('button', {name:'Lưu hợp đồng'}).click();
   await owner.locator('#room-profile').getByText('1.200.000 ₫', {exact:true}).waitFor();
   console.log('PASS Playwright: preview a dated policy batch, exclude the occupied room, and inherit prices on move-in');
