@@ -82,12 +82,12 @@ func (a *App) cashReceipt(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err != nil {
-			a.problem(w, err)
+			a.problem(w, r, err)
 			return
 		}
 		data, err := decrypt(a.store.key, scope, sealed)
 		if err != nil {
-			a.problem(w, err)
+			a.problem(w, r, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -101,13 +101,13 @@ func (a *App) cashReceipt(w http.ResponseWriter, r *http.Request) {
 	}
 	file, _, err := r.FormFile("receipt")
 	if err != nil {
-		a.problem(w, inputError{errors.New("Chọn tệp chứng từ.")})
+		a.problem(w, r, inputError{errors.New("Chọn tệp chứng từ.")})
 		return
 	}
 	defer file.Close()
 	data, err := io.ReadAll(io.LimitReader(file, receiptBytes+1))
 	if err != nil || len(data) > receiptBytes || receiptFormat(data) == "" {
-		a.problem(w, inputError{errors.New("Chứng từ phải là PDF, JPG hoặc PNG, tối đa 2 MB.")})
+		a.problem(w, r, inputError{errors.New("Chứng từ phải là PDF, JPG hoặc PNG, tối đa 2 MB.")})
 		return
 	}
 	var period string
@@ -120,12 +120,12 @@ func (a *App) cashReceipt(w http.ResponseWriter, r *http.Request) {
 		}
 		return errMissing
 	}); err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	sealed, err := encrypt(a.store.key, scope, data)
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	if err := a.store.withReceiptTx(ctx, org, func(tx pgx.Tx) error {
@@ -135,7 +135,7 @@ func (a *App) cashReceipt(w http.ResponseWriter, r *http.Request) {
 		}
 		return err
 	}); err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	http.Redirect(w, r, "/cash?saved=receipt&period="+period, http.StatusSeeOther)

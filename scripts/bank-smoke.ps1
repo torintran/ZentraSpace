@@ -17,7 +17,17 @@ function Page($Session, [string]$Path, [hashtable]$Form) {
         $options.Headers=@{Origin=$Base}
         $options.Body=$Form
     }
-    Invoke-WebRequest @options
+    $response = Invoke-WebRequest @options
+    $content = $response.Content
+    if ($response.Headers['Content-Type'] -like 'text/html*') {
+        $content = $content.Replace('<!-- -->', '')
+    }
+    [pscustomobject]@{
+        StatusCode = $response.StatusCode
+        Headers = $response.Headers
+        Content = $content
+        RawContentStream = $response.RawContentStream
+    }
 }
 function Capture([string]$Text,[string]$Pattern) {
     $m=[regex]::Match($Text,$Pattern)

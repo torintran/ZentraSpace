@@ -31,17 +31,17 @@ func (a *App) cash(w http.ResponseWriter, r *http.Request) {
 		page.Cash = b.cashReport(period)
 		return nil
 	}); err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	if r.URL.Path != "/cash.csv" {
 		var err error
 		page.CashReceipts, err = a.store.receiptKeys(r.Context(), s.organization)
 		if err != nil {
-			a.problem(w, err)
+			a.problem(w, r, err)
 			return
 		}
-		a.page(w, page)
+		a.page(w, r, page)
 		return
 	}
 	rows := [][]string{{"Ngày", "Loại", "Phòng", "Danh mục", "Mã chứng từ", "Ghi chú", "Tiền vào (VND)", "Tiền ra (VND)", "Mã bút toán"}}

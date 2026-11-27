@@ -1,0 +1,231 @@
+import { Fragment } from 'react';
+import { Action, ActionLink, FieldArea, FieldInput, Panel } from './components';
+import { configured, has, itemKey, money, suffix } from './view';
+import type { PageData, Invoice } from './view';
+
+export function BankScreen({ page }: { page: PageData }) {
+  const bank = page.Bank;
+  if (!bank) return null;
+  return (
+    <>
+      <a className="back" href="/">
+        ← Về kỳ thu
+      </a>
+      <div className="page-title">
+        <div>
+          <p className="eyebrow">THU TIỀN</p>
+          <h1>Đối soát ngân hàng</h1>
+        </div>
+      </div>
+      <div className="columns">
+        <Panel className="card" as="section">
+          <h2>Giao dịch tiền vào</h2>
+          <nav className="tabs" aria-label="Trạng thái đối soát">
+            <a className={!has(bank.Reviewed) ? 'active' : ''} href="/bank">
+              Chờ duyệt
+            </a>
+            <a
+              className={has(bank.Reviewed) ? 'active' : ''}
+              href="/bank?status=reviewed"
+            >
+              Đã đối soát
+            </a>
+          </nav>
+          {has(bank.Transfers) ? (
+            bank.Transfers.map((transfer, index) => (
+              <Fragment key={itemKey(transfer, index)}>
+                <article className="list-row">
+                  <div>
+                    <strong>{money(transfer.Amount)}</strong>
+                    <p>
+                      {transfer.Date} · {transfer.Reference} · TK …
+                      {transfer.AccountSuffix}
+                    </p>
+                    {has(transfer.Memo) ? (
+                      <>
+                        <p>{transfer.Memo}</p>
+                      </>
+                    ) : null}
+                  </div>
+                  <ActionLink
+                    className="button secondary"
+                    href={'/bank/review/' + transfer.ID}
+                  >
+                    {has(transfer.InvoiceID) ? (
+                      <>Xem đối soát</>
+                    ) : (
+                      <>Duyệt giao dịch</>
+                    )}
+                  </ActionLink>
+                </article>
+              </Fragment>
+            ))
+          ) : (
+            <>
+              <p className="empty">Chưa có giao dịch trong mục này.</p>
+            </>
+          )}
+          {has(has(bank.HasPrevious) || has(bank.HasNext)) ? (
+            <>
+              <nav className="actions" aria-label="Trang giao dịch">
+                {has(bank.HasPrevious) ? (
+                  <>
+                    <ActionLink
+                      className="button secondary"
+                      href={
+                        '/bank?offset=' +
+                        bank.Previous +
+                        (has(bank.Reviewed) ? '&status=reviewed' : '')
+                      }
+                    >
+                      Trang trước
+                    </ActionLink>
+                  </>
+                ) : null}
+                {has(bank.HasNext) ? (
+                  <>
+                    <ActionLink
+                      className="button secondary"
+                      href={
+                        '/bank?offset=' +
+                        bank.Next +
+                        (has(bank.Reviewed) ? '&status=reviewed' : '')
+                      }
+                    >
+                      Trang sau
+                    </ActionLink>
+                  </>
+                ) : null}
+              </nav>
+            </>
+          ) : null}
+        </Panel>
+        <Panel className="card" as="section">
+          <h2>Tài khoản nhận tiền</h2>
+          {has(configured(bank.Account)) ? (
+            <>
+              <p className="notice">
+                Đang dùng tài khoản ••••{suffix(bank.Account)} · BIN{' '}
+                {bank.Account.BIN}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="subtle">
+                Lưu tài khoản để người thuê có thể xem VietQR sau khi xác minh
+                bảng kê.
+              </p>
+            </>
+          )}
+          <details
+            open={has(!has(configured(bank.Account))) ? true : undefined}
+          >
+            <summary>
+              {has(configured(bank.Account)) ? (
+                <>Đổi tài khoản</>
+              ) : (
+                <>Nhập thông tin tài khoản</>
+              )}
+            </summary>
+            <form method="post" action="/bank/account" className="form">
+              <input type="hidden" name="csrf" value={page.CSRF} />
+              <label>
+                Mã BIN ngân hàng (6 số)
+                <FieldInput
+                  type="text"
+                  name="bin"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                />
+              </label>
+              <label>
+                Số tài khoản nhận
+                <FieldInput
+                  type="text"
+                  name="account"
+                  inputMode="numeric"
+                  pattern="[0-9]{4,19}"
+                  maxLength={19}
+                  required
+                />
+              </label>
+              <label>
+                Tên chủ tài khoản
+                <FieldInput name="holder" maxLength={80} required />
+              </label>
+              {has(configured(bank.Account)) ? (
+                <>
+                  <p className="subtle">
+                    Đổi ngân hàng hoặc số tài khoản sẽ thu hồi các link xem cũ.
+                    Hãy gửi link mới sau khi kiểm tra tài khoản.
+                  </p>
+                </>
+              ) : null}
+              <label className="check">
+                <input type="checkbox" name="confirm" value="yes" required />{' '}
+                Tôi đã kiểm tra tài khoản nhận.
+              </label>
+              <Action>Lưu tài khoản</Action>
+            </form>
+          </details>
+          {has(bank.MockAvailable) ? (
+            <>
+              <hr />
+              <h2>Đối soát mô phỏng</h2>
+              <p className="subtle">
+                {has(bank.MockAutoMatch) ? (
+                  <>Tự đối soát đang bật.</>
+                ) : (
+                  <>Giao dịch mô phỏng đang chờ chủ trọ duyệt.</>
+                )}{' '}
+                Chỉ tự ghép khi có đúng một mã bảng kê, số tiền khớp công nợ còn
+                lại và không có khoản ghi tay mơ hồ.
+              </p>
+              <form method="post" action="/bank/mock-settings">
+                <input type="hidden" name="csrf" value={page.CSRF} />
+                <Action
+                  className="secondary"
+                  name="mode"
+                  value={has(bank.MockAutoMatch) ? 'manual' : 'auto'}
+                >
+                  {has(bank.MockAutoMatch) ? (
+                    <>Chuyển về duyệt tay</>
+                  ) : (
+                    <>Bật tự đối soát mô phỏng</>
+                  )}
+                </Action>
+              </form>
+            </>
+          ) : null}
+          {has(configured(bank.Account)) ? (
+            <>
+              <hr />
+              <h2>Nhập sao kê CSV</h2>
+              <p className="subtle">
+                Dùng giao dịch tiền vào của tài khoản đang chọn. Ngày dạng
+                YYYY-MM-DD, số tiền nguyên dương. Mỗi dòng cần mã giao dịch ngân
+                hàng.
+              </p>
+              <form method="post" action="/bank/import" className="form">
+                <input type="hidden" name="csrf" value={page.CSRF} />
+                <label>
+                  Nội dung CSV
+                  <FieldArea
+                    name="csv"
+                    rows={4}
+                    spellCheck={false}
+                    required
+                    defaultValue="ma_giao_dich,ngay,so_tien,noi_dung"
+                  ></FieldArea>
+                </label>
+                <Action className="secondary">Thêm vào hàng chờ</Action>
+              </form>
+            </>
+          ) : null}
+        </Panel>
+      </div>
+    </>
+  );
+}

@@ -17,7 +17,18 @@ function Open-Page($Client, [string]$Path, [hashtable]$Data, [string]$Origin = $
         $options.Body = $Data
         $options.Headers = @{Origin = $Origin}
     }
-    Invoke-WebRequest @options
+    $response = Invoke-WebRequest @options
+    $content = $response.Content
+    if ($response.Headers['Content-Type'] -like 'text/html*') {
+        $content = $content.Replace('<!-- -->', '')
+    }
+    [pscustomobject]@{
+        StatusCode = $response.StatusCode
+        Headers = $response.Headers
+        Content = $content
+        RawContentLength = $response.RawContentLength
+        RawContentStream = $response.RawContentStream
+    }
 }
 function Get-Match([string]$Body, [string]$Pattern) {
     $match = [regex]::Match($Body, $Pattern)
@@ -51,6 +62,14 @@ $period = '2026-11'
 $room = "Test-" + [Guid]::NewGuid().ToString('N').Substring(0,8)
 $request = Open-Page $outsider '/healthz'
 Assert-That ($request.StatusCode -eq 200) 'health endpoint'
+$request = Open-Page $outsider '/login'
+Assert-That ($request.Content.Contains('/_next/static/') -and $request.Headers['Content-Security-Policy'] -match "'nonce-[A-Za-z0-9+/=]+'") 'public gateway serves Next.js with nonce-based script policy'
+Assert-That ($request.Headers['Cache-Control'] -contains 'no-store') 'rendered pages cannot be cached'
+$scriptPath = Get-Match $request.Content 'src="(/_next/static/[^"]+\.js)"'
+$request = Open-Page $outsider $scriptPath
+Assert-That ($request.StatusCode -eq 200 -and ($request.Headers['Cache-Control'] -join ',') -match '\bimmutable\b') 'hashed frontend assets are available and cacheable'
+$request = Open-Page $outsider '/__render' @{path='/login';view='{}'}
+Assert-That ($request.StatusCode -eq 404) 'private renderer is unavailable through the public gateway'
 $request = Open-Page $outsider '/privacy'
 Assert-That ($request.StatusCode -eq 200 -and $request.Content.Contains('<h1>Quyền riêng tư</h1>') -and $request.Content.Contains('2026 Torin Tran')) 'public privacy page and copyright'
 $request = Open-Page $owner '/login' @{account='owner';password=$config.ZS_OWNER_PASSWORD}

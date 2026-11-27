@@ -1,0 +1,171 @@
+import {
+  ClipboardList,
+  DoorOpen,
+  Gauge,
+  Landmark,
+  LayoutDashboard,
+  LogOut,
+  Wallet,
+} from 'lucide-react';
+import { Action, Notice } from './components';
+import type { PageData, Screen } from './view';
+import { LoginScreen } from './login';
+import { PrivacyScreen } from './privacy';
+import { ErrorScreen } from './error';
+import { HomeScreen } from './home';
+import { RoomScreen } from './room';
+import { CashScreen } from './cash';
+import { BankScreen } from './bank';
+import { BankReviewScreen } from './bank-review';
+import { InvoiceScreen } from './invoice';
+import { ImportScreen } from './import';
+import { InviteScreen } from './invite';
+import { VerifyScreen } from './verify';
+import { SharedScreen } from './shared';
+import { MockBankScreen } from './mock-bank';
+
+const screens = {
+  login: LoginScreen,
+  privacy: PrivacyScreen,
+  error: ErrorScreen,
+  home: HomeScreen,
+  room: RoomScreen,
+  cash: CashScreen,
+  bank: BankScreen,
+  'bank-review': BankReviewScreen,
+  invoice: InvoiceScreen,
+  import: ImportScreen,
+  invite: InviteScreen,
+  verify: VerifyScreen,
+  shared: SharedScreen,
+  'mock-bank': MockBankScreen,
+};
+
+const wide = new Set<Screen>([
+  'home',
+  'invoice',
+  'bank',
+  'room',
+  'shared',
+  'cash',
+]);
+const navigation = [
+  { tab: 'dashboard', label: 'Tổng quan', Icon: LayoutDashboard },
+  { tab: 'billing', label: 'Chốt kỳ thu', Icon: ClipboardList },
+  { tab: 'meters', label: 'Nhập điện nước', Icon: Gauge },
+  { tab: 'rooms', label: 'Phòng và hợp đồng', Icon: DoorOpen },
+  { tab: 'bank', label: 'Đối soát ngân hàng', Icon: Landmark },
+  { tab: 'cash', label: 'Thu chi và cọc', Icon: Wallet },
+] as const;
+
+function WorkspaceNav({ page }: { page: PageData }) {
+  const period = page.Period || page.Invoice?.Period;
+  const selected =
+    page.Screen === 'home'
+      ? page.Tab
+      : (
+          {
+            'bank-review': 'bank',
+            invoice: 'billing',
+            invite: 'billing',
+            room: 'rooms',
+            import: 'rooms',
+          } as Record<string, string>
+        )[page.Screen] || page.Screen;
+  return (
+    <nav className="workspace-nav" aria-label="Quản lý kỳ thu">
+      <div className="layout workspace-nav-inner">
+        {navigation.map(({ tab, label, Icon }) => {
+          const params = new URLSearchParams(period ? { period } : {});
+          if (tab !== 'bank' && tab !== 'cash') params.set('tab', tab);
+          const query = params.size ? '?' + params.toString() : '';
+          const href =
+            tab === 'bank'
+              ? '/bank'
+              : tab === 'cash'
+                ? '/cash' + query
+                : '/' + query;
+          return (
+            <a
+              key={tab}
+              href={href}
+              aria-current={selected === tab ? 'page' : undefined}
+            >
+              <Icon aria-hidden size={18} strokeWidth={1.9} />
+              <span>{label}</span>
+            </a>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+export function Screens({ page }: { page: PageData }) {
+  const ScreenComponent = screens[page.Screen];
+  return (
+    <>
+      <a className="skip" href="#main">
+        Đến nội dung
+      </a>
+      <header className="bar">
+        <div className="bar-inner">
+          <a className="brand" href="/" aria-label="ZentraSpace">
+            <img src="/assets/icon.svg" alt="" width={37} height={37} />
+            <span>
+              Zentra<span className="accent">Space</span>
+            </span>
+          </a>
+          {page.Role && (
+            <form action="/action/logout" method="post">
+              <input type="hidden" name="csrf" value={page.CSRF} />
+              <Action
+                className="secondary small"
+                leftSection={<LogOut aria-hidden size={17} />}
+              >
+                Đăng xuất
+              </Action>
+            </form>
+          )}
+        </div>
+      </header>
+      {page.Role === 'owner' && <WorkspaceNav page={page} />}
+      <main
+        id="main"
+        className={wide.has(page.Screen) ? 'layout' : 'layout narrow'}
+      >
+        {page.Error && (
+          <Notice className="notice error" role="alert">
+            {page.Error}
+          </Notice>
+        )}
+        {page.Message && (
+          <Notice className="notice" role="status">
+            {page.Message}
+          </Notice>
+        )}
+        <ScreenComponent page={page} />
+      </main>
+      <footer className="site-footer">
+        <div className="layout site-footer-inner">
+          <div className="site-footer-identity">
+            <span className="site-footer-brand">
+              <img src="/assets/icon.svg" alt="" width={24} height={24} />
+              ZentraSpace
+            </span>
+            <span className="site-footer-copyright">© 2026 Torin Tran</span>
+          </div>
+          {page.Screen !== 'mock-bank' && (
+            <a
+              className="site-footer-link"
+              href="/privacy"
+              aria-current={page.Screen === 'privacy' ? 'page' : undefined}
+            >
+              Quyền riêng tư
+            </a>
+          )}
+        </div>
+      </footer>
+    </>
+  );
+}

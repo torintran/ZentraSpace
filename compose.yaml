@@ -9,7 +9,7 @@ services:
     volumes:
       - data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d zentraspace"]
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "zentraspace"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -33,6 +33,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      frontend:
+        condition: service_healthy
     environment:
       DB_HOST: db
       DB_RUNTIME_PASSWORD: ${DB_RUNTIME_PASSWORD:?run scripts/init-local.ps1}
@@ -42,6 +44,8 @@ services:
       ZS_STAFF_ACCOUNTS: ${ZS_STAFF_ACCOUNTS:-}
       ZS_LOCAL_HTTP: ${ZS_LOCAL_HTTP:-1}
       ZS_ORIGIN: ${ZS_ORIGIN:-http://localhost:8087}
+      ZS_FRONTEND_URL: http://frontend:3000
+    networks: [default, rendering]
     ports:
       - "127.0.0.1:${ZS_PORT:-8087}:8080"
     read_only: true
@@ -52,5 +56,22 @@ services:
       interval: 5s
       timeout: 3s
       retries: 15
+  frontend:
+    image: ${COMPOSE_PROJECT_NAME:-zentraspace}-frontend:local
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    read_only: true
+    networks: [rendering]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/__ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
 volumes:
   data:
+networks:
+  rendering:
+    internal: true

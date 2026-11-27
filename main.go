@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"encoding/csv"
 	"errors"
-	"html/template"
 	"io"
 	"log"
 	"net"
@@ -34,7 +33,7 @@ type App struct {
 	secure         bool
 	accounts       map[string]staffLogin
 	mockBankSecret string
-	pages          *template.Template
+	frontend       *frontendRenderer
 	mu             sync.Mutex
 	sessions       map[string]session
 	limits         map[string]limiter
@@ -75,6 +74,7 @@ type Page struct {
 	Bank                                                                      *BankScreen
 	BankReview                                                                *TransferReview
 	PaymentBank                                                               BankAccount
+	MockEvent                                                                 *mockTransfer
 }
 
 func main() {
@@ -135,9 +135,10 @@ func main() {
 	if local {
 		a.mockBankSecret = os.Getenv("ZS_MOCK_BANK_SECRET")
 	}
-	a.pages = template.Must(template.New("app").Funcs(template.FuncMap{
-		"money": money, "key": token, "clock": func(t time.Time) string { return t.In(vietnam).Format("15:04 · 02/01/2006") },
-	}).ParseFS(webFiles, "web/app.html"))
+	a.frontend, err = newFrontendRenderer(os.Getenv("ZS_FRONTEND_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	server := &http.Server{Addr: ":8080", Handler: a.routes(), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 12 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384}
 	log.Print("ZentraSpace listening on :8080")
 	log.Fatal(server.ListenAndServe())
@@ -225,18 +226,10 @@ func (a *App) getSession(r *http.Request, name string) (session, string) {
 func (a *App) cookie(w http.ResponseWriter, name, value, path string, age int) {
 	http.SetCookie(w, &http.Cookie{Name: name, Value: value, Path: path, MaxAge: age, Secure: a.secure, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 }
-func (a *App) page(w http.ResponseWriter, p Page) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if p.Status != 0 {
-		w.WriteHeader(p.Status)
-	}
-	if err := a.pages.ExecuteTemplate(w, "app.html", p); err != nil {
-		log.Print("template rendering failed: ", err)
-	}
-}
 func (a *App) routes() http.Handler {
 	m := http.NewServeMux()
 	m.Handle("GET /assets/", http.FileServer(http.FS(webAssets())))
+	m.Handle("GET /_next/static/", a.frontend.assets())
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
@@ -246,8 +239,8 @@ func (a *App) routes() http.Handler {
 		}
 		w.Write([]byte("ok"))
 	})
-	m.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) { a.page(w, Page{Screen: "login"}) })
-	m.HandleFunc("GET /privacy", func(w http.ResponseWriter, r *http.Request) { a.page(w, Page{Screen: "privacy"}) })
+	m.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) { a.page(w, r, Page{Screen: "login"}) })
+	m.HandleFunc("GET /privacy", func(w http.ResponseWriter, r *http.Request) { a.page(w, r, Page{Screen: "privacy"}) })
 	m.HandleFunc("POST /login", a.login)
 	m.HandleFunc("GET /{$}", a.home)
 	m.HandleFunc("GET /invoice/{id}", a.invoice)
@@ -330,7 +323,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		account = a.accounts["owner"]
 	}
 	if bcrypt.CompareHashAndPassword(account.passwordHash, []byte(r.Form.Get("password"))) != nil || !known {
-		a.page(w, Page{Screen: "login", Status: http.StatusUnauthorized, Error: "Kiểm tra lại tài khoản hoặc mật khẩu."})
+		a.page(w, r, Page{Screen: "login", Status: http.StatusUnauthorized, Error: "Kiểm tra lại tài khoản hoặc mật khẩu."})
 		return
 	}
 	id := a.newSession(account.role, account.organization, 8*time.Hour)
@@ -421,10 +414,10 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	}); err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
-	a.page(w, p)
+	a.page(w, r, p)
 }
 func (a *App) invoice(w http.ResponseWriter, r *http.Request) {
 	s, id, ok := a.staff(w, r)
@@ -455,10 +448,10 @@ func (a *App) invoice(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
-	a.page(w, p)
+	a.page(w, r, p)
 }
 func plainCSV(s string) string {
 	s = strings.TrimSpace(s)
@@ -507,10 +500,10 @@ func (a *App) roomDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	}); err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
-	a.page(w, p)
+	a.page(w, r, p)
 }
 
 func (a *App) roomTemplate(w http.ResponseWriter, r *http.Request) {
@@ -549,7 +542,7 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
@@ -563,14 +556,14 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 
 type inputError struct{ error }
 
-func (a *App) problem(w http.ResponseWriter, err error) {
+func (a *App) problem(w http.ResponseWriter, r *http.Request, err error) {
 	var user inputError
 	if errors.Is(err, errMissing) {
 		http.Error(w, errMissing.Error(), 404)
 		return
 	}
 	if errors.As(err, &user) || errors.Is(err, errInvalid) || errors.Is(err, errLocked) {
-		a.page(w, Page{Screen: "error", Status: http.StatusUnprocessableEntity, Error: err.Error()})
+		a.page(w, r, Page{Screen: "error", Status: http.StatusUnprocessableEntity, Error: err.Error()})
 		return
 	}
 	log.Printf("request failed (%T)", err)
@@ -608,11 +601,11 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			return nil
 		})
 		if err != nil {
-			a.problem(w, err)
+			a.problem(w, r, err)
 			return
 		}
 		p.Screen, p.Import = "import", &preview
-		a.page(w, p)
+		a.page(w, r, p)
 		return
 	}
 	err := a.store.book(r.Context(), s.organization, true, func(b *Book) error {
@@ -821,11 +814,11 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	if p.Code != "" {
-		a.page(w, p)
+		a.page(w, r, p)
 		return
 	}
 	http.Redirect(w, r, next, http.StatusSeeOther)
@@ -835,7 +828,7 @@ func (a *App) share(w http.ResponseWriter, r *http.Request) {
 	p := Page{Screen: "verify", InviteID: id}
 	i, bank, err := a.sharedBill(r)
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	if i != nil && i.Issued {
@@ -844,7 +837,7 @@ func (a *App) share(w http.ResponseWriter, r *http.Request) {
 			p.PaymentBank = bank
 		}
 	}
-	a.page(w, p)
+	a.page(w, r, p)
 }
 func (a *App) verify(w http.ResponseWriter, r *http.Request) {
 	route := r.PathValue("id")
@@ -854,7 +847,7 @@ func (a *App) verify(w http.ResponseWriter, r *http.Request) {
 	}
 	org, id, ok := a.store.shareTarget(route)
 	if !ok {
-		a.page(w, Page{Screen: "verify", InviteID: route, Error: "Mã không hợp lệ hoặc lời mời đã hết hạn. Hãy liên hệ người quản lý."})
+		a.page(w, r, Page{Screen: "verify", InviteID: route, Error: "Mã không hợp lệ hoặc lời mời đã hết hạn. Hãy liên hệ người quản lý."})
 		return
 	}
 	verified := false
@@ -865,11 +858,11 @@ func (a *App) verify(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	if !verified {
-		a.page(w, Page{Screen: "verify", InviteID: route, Error: "Mã không hợp lệ hoặc lời mời đã hết hạn. Hãy liên hệ người quản lý."})
+		a.page(w, r, Page{Screen: "verify", InviteID: route, Error: "Mã không hợp lệ hoặc lời mời đã hết hạn. Hãy liên hệ người quản lý."})
 		return
 	}
 	a.cookie(w, "zs_reader", a.newSession("share:"+route, org, 30*time.Minute), "/p/"+route, 1800)

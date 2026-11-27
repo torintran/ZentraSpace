@@ -24,7 +24,7 @@ Khi đo pilot, ghi riêng thời gian thao tác của chủ trọ, số lần ng
 
 ## Thiết kế cho bản đầu
 
-- Một luồng web tiếng Việt dùng được trên điện thoại. Dùng Go/PostgreSQL cho nghiệp vụ và Next.js cho web theo blueprint. Giữ một môi trường pilot với DB có sao lưu. Chỉ thêm worker và queue khi công việc chạy nền cần retry hoặc tách khỏi request.
+- Giao diện web tiếng Việt dùng Next.js, Mantine và Lucide trên điện thoại và desktop. Go/PostgreSQL xử lý nghiệp vụ và dữ liệu. Giữ một môi trường pilot với DB có sao lưu. Chỉ thêm worker và queue khi công việc chạy nền cần retry hoặc tách khỏi request. [Quyết định frontend](../docs/decisions/001-frontend-stack.md)
 - Có ranh giới org từ migration đầu và kiểm quyền với hai bộ dữ liệu trước khi cấp quyền dùng thật. Thực hiện từng lát dọc qua dữ liệu, dịch vụ và UI. Bảng kê đã phát hành bất biến, thu và điều chỉnh ghi vào sổ phụ; số dư tính lại được từ bút toán.
 - Mẫu thử màn hình chính, màn nhập chỉ số và màn người thuê thuộc giai đoạn 0. Đo với người từ 55 tuổi và người dùng quen công nghệ. Mặc định ưu tiên việc cần làm và che số liệu tổng. Thao tác hàng loạt mở theo vai trò tại màn phù hợp. Mục tiêu 4/5 người quản lý lớn tuổi tự hoàn thành luồng và giảm 30% thời gian với cùng dữ liệu. [Tiêu chí sản phẩm](../docs/ZENTRASPACE-BLUEPRINT.md#điểm-khác-biệt-cần-chứng-minh)
 - Mã hóa khi truyền và lưu, quản lý khóa tách biệt, kiểm quyền ở API/DB. Gửi lời nhắc Zalo không kèm số tiền, người nhận xác minh qua kênh đã đăng ký trước khi đọc. Thử xác minh trên điện thoại pilot và giá nhà cung cấp trước khi chốt lại lịch.

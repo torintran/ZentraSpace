@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -131,20 +130,6 @@ func (a *App) mockWebhook(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"created": added == 1, "matched": matched})
 }
 
-var mockBankPage = template.Must(template.New("mock-bank").Parse(`<!doctype html>
-<html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ngân hàng mô phỏng · ZentraSpace</title>
-<h1>Ngân hàng mô phỏng</h1>
-<p>Gửi giao dịch giả lập vào tài khoản thử 0000000000000. Giữ nguyên thông tin giao dịch để kiểm tra gửi lại.</p>
-{{if .Result}}<p role="status">{{.Result}}</p>{{end}}
-<form method="post" action="/transfer">
-<p><label>Mã giao dịch <input name="reference" value="{{.Event.Reference}}" maxlength="80" required></label></p>
-<p><label>Ngày giao dịch <input name="date" type="date" value="{{.Event.Date}}" required></label></p>
-<p><label>Số tiền (đồng) <input name="amount" type="number" value="{{.Event.Amount}}" min="1" max="100000000000" required></label></p>
-<p><label>Nội dung chuyển khoản <input name="memo" value="{{.Event.Memo}}" maxlength="100"></label></p>
-<button>Gửi giao dịch</button>
-</form></html>`))
-
 func runMockBank() error {
 	secret, origin := os.Getenv("ZS_MOCK_BANK_SECRET"), os.Getenv("ZS_MOCK_BANK_ORIGIN")
 	if len(secret) < 32 || origin == "" {
@@ -152,19 +137,22 @@ func runMockBank() error {
 	}
 	client := &http.Client{Timeout: 5 * time.Second}
 	mux := http.NewServeMux()
-	render := func(w http.ResponseWriter, event mockTransfer, result string, status int) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	frontend, err := newFrontendRenderer(os.Getenv("ZS_FRONTEND_URL"))
+	if err != nil {
+		return err
+	}
+	app := &App{frontend: frontend}
+	mux.Handle("GET /_next/static/", frontend.assets())
+	mux.Handle("GET /assets/", http.FileServer(http.FS(webAssets())))
+	render := func(w http.ResponseWriter, r *http.Request, event mockTransfer, result string, status int) {
 		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; form-action 'self'")
-		w.WriteHeader(status)
-		mockBankPage.Execute(w, struct {
-			Event  mockTransfer
-			Result string
-		}{event, result})
+		w.Header().Set("Referrer-Policy", "strict-origin")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		app.page(w, r, Page{Screen: "mock-bank", MockEvent: &event, Message: result, Status: status})
 	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok")) })
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		render(w, mockTransfer{Reference: "MOCK-" + token()[:12], Date: time.Now().In(vietnam).Format("2006-01-02"), Amount: 300000}, "", http.StatusOK)
+		render(w, r, mockTransfer{Reference: "MOCK-" + token()[:12], Date: time.Now().In(vietnam).Format("2006-01-02"), Amount: 300000}, "", http.StatusOK)
 	})
 	mux.HandleFunc("POST /transfer", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Origin") != origin {
@@ -180,14 +168,14 @@ func runMockBank() error {
 		event := mockTransfer{Reference: strings.TrimSpace(r.Form.Get("reference")), Date: r.Form.Get("date"),
 			Account: mockBankAccount, BIN: mockBankBIN, Direction: "credit", Amount: amount, Memo: strings.TrimSpace(r.Form.Get("memo"))}
 		if !event.valid() {
-			render(w, event, "Kiểm tra mã, ngày, số tiền và nội dung giao dịch.", http.StatusUnprocessableEntity)
+			render(w, r, event, "Kiểm tra mã, ngày, số tiền và nội dung giao dịch.", http.StatusUnprocessableEntity)
 			return
 		}
 		body, _ := json.Marshal(event)
 		stamp := strconv.FormatInt(time.Now().Unix(), 10)
 		request, err := http.NewRequestWithContext(r.Context(), http.MethodPost, "http://web:8080"+mockBankPath, bytes.NewReader(body))
 		if err != nil {
-			render(w, event, "Không tạo được webhook.", http.StatusBadGateway)
+			render(w, r, event, "Không tạo được webhook.", http.StatusBadGateway)
 			return
 		}
 		request.Header.Set("Content-Type", "application/json")
@@ -195,19 +183,19 @@ func runMockBank() error {
 		request.Header.Set("X-ZS-Mock-Signature", hex.EncodeToString(mockSignature(secret, stamp, body)))
 		response, err := client.Do(request)
 		if err != nil {
-			render(w, event, "ZentraSpace chưa phản hồi. Có thể gửi lại giao dịch này.", http.StatusBadGateway)
+			render(w, r, event, "ZentraSpace chưa phản hồi. Có thể gửi lại giao dịch này.", http.StatusBadGateway)
 			return
 		}
 		defer response.Body.Close()
 		var result struct{ Created, Matched bool }
 		if response.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(response.Body, 1024)).Decode(&result) != nil {
-			render(w, event, fmt.Sprintf("ZentraSpace từ chối webhook (HTTP %d).", response.StatusCode), http.StatusBadGateway)
+			render(w, r, event, fmt.Sprintf("ZentraSpace từ chối webhook (HTTP %d).", response.StatusCode), http.StatusBadGateway)
 		} else if result.Matched {
-			render(w, event, "Đã tự đối soát. Mở bảng kê để kiểm tra số dư.", http.StatusOK)
+			render(w, r, event, "Đã tự đối soát. Mở bảng kê để kiểm tra số dư.", http.StatusOK)
 		} else if result.Created {
-			render(w, event, "Đã nhận giao dịch. Mở Đối soát ngân hàng để duyệt.", http.StatusOK)
+			render(w, r, event, "Đã nhận giao dịch. Mở Đối soát ngân hàng để duyệt.", http.StatusOK)
 		} else {
-			render(w, event, "Giao dịch đã tồn tại. Không ghi trùng.", http.StatusOK)
+			render(w, r, event, "Giao dịch đã tồn tại. Không ghi trùng.", http.StatusOK)
 		}
 	})
 	log.Print("Mock bank listening on :8080")

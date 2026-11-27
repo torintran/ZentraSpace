@@ -1,7 +1,7 @@
 package main
 
 import (
-	"html/template"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,9 +17,28 @@ func TestBrowserFormOriginAndReferrerPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	renderer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Path string
+			View Page
+		}
+		if r.URL.Path != "/__render" || r.Method != http.MethodPost ||
+			json.NewDecoder(r.Body).Decode(&body) != nil || body.Path == "" || body.View.Screen == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Security-Policy", "script-src 'self' 'nonce-test'")
+		w.Write([]byte("<html></html>"))
+	}))
+	t.Cleanup(renderer.Close)
+	frontend, err := newFrontendRenderer(renderer.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
 	app := &App{
 		origin:   origin,
-		pages:    template.Must(template.New("app.html").Parse("login form")),
+		frontend: frontend,
 		accounts: map[string]staffLogin{"owner": {pilotOrg, "owner", password}},
 		sessions: map[string]session{},
 		limits:   map[string]limiter{},

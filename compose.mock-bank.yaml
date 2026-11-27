@@ -12,6 +12,8 @@ services:
     environment:
       ZS_MOCK_BANK_SECRET: ${ZS_MOCK_BANK_SECRET:?configure the mock bank secret}
       ZS_MOCK_BANK_ORIGIN: http://localhost:${ZS_MOCK_BANK_PORT:-8093}
+      ZS_FRONTEND_URL: http://frontend:3000
+    networks: [default, rendering]
     ports:
       - "127.0.0.1:${ZS_MOCK_BANK_PORT:-8093}:8080"
     read_only: true

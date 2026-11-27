@@ -92,10 +92,10 @@ func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
-	a.page(w, p)
+	a.page(w, r, p)
 }
 
 func (a *App) bankReview(w http.ResponseWriter, r *http.Request) {
@@ -142,10 +142,10 @@ func (a *App) bankReview(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
-	a.page(w, Page{Screen: "bank-review", Role: "owner", CSRF: csrf, BankReview: review})
+	a.page(w, r, Page{Screen: "bank-review", Role: "owner", CSRF: csrf, BankReview: review})
 }
 
 func (a *App) bankAction(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +201,7 @@ func (a *App) bankAction(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	http.Redirect(w, r, next, http.StatusSeeOther)
@@ -233,7 +233,7 @@ func (a *App) sharedBill(r *http.Request) (*Invoice, BankAccount, error) {
 func (a *App) shareQR(w http.ResponseWriter, r *http.Request) {
 	i, bank, err := a.sharedBill(r)
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	if i == nil || !i.Issued {
@@ -247,7 +247,7 @@ func (a *App) shareQR(w http.ResponseWriter, r *http.Request) {
 	}
 	png, err := qrcode.Encode(payload, qrcode.Medium, 280)
 	if err != nil {
-		a.problem(w, err)
+		a.problem(w, r, err)
 		return
 	}
 	w.Header().Set("Content-Type", "image/png")

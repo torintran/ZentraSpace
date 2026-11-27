@@ -46,7 +46,7 @@ Webhook mô phỏng xác minh HMAC và thời gian gửi, ghi theo tài khoản 
 
 ## Phạm vi của lần chạy thử
 
-- Go render giao diện HTML và PostgreSQL giữ dữ liệu. Tôi chọn render phía máy chủ cho bản chạy thử để chạy được bằng một tiến trình web trong Docker khi npm trên máy không truy cập được registry. Blueprint mô tả Next.js cho kiến trúc mở rộng.
+- Giao diện dùng Next.js App Router, TypeScript, Mantine và Lucide React. Docker Compose dựng frontend riêng trên Node.js, chỉ mở cổng Go ra trình duyệt. Go xác thực, phân quyền, xử lý form và chuyển dữ liệu đã chọn theo màn hình đến frontend để dựng HTML. PostgreSQL lưu dữ liệu nghiệp vụ đã mã hoá. [Quyết định frontend](docs/decisions/001-frontend-stack.md)
 - Sổ thử được lưu thành tài liệu mã hóa AES-256-GCM theo phạm vi tổ chức. Transaction khóa hàng khi thay đổi để giữ bất biến tài chính. PostgreSQL RLS giới hạn theo ngữ cảnh giao dịch, tài khoản DB chạy web không sở hữu bảng. Service migration giữ tài khoản bootstrap riêng. Mật khẩu đăng nhập được xác minh bằng bcrypt.
 - Bản này phục vụ một tòa với hai vai trò cục bộ. Phần lưu trữ hiện là sổ mã hóa theo tổ chức. Mô hình quan hệ đầy đủ cho timeline hợp đồng, phân quyền nhiều tòa, quản lý vòng đời khóa và audit triển khai thuộc các bước tiếp theo. Phiên đăng nhập và phiên xem link được tạo lại sau khi khởi động lại web.
 - Điện/nước dùng đơn giá đã được người quản lý xác nhận, chưa tự chọn biểu giá pháp lý. VietQR thử nghiệm và đối soát từ CSV dùng dữ liệu do chủ trọ cung cấp. Webhook ngân hàng, gửi mã xác minh tự động và gửi Zalo tự động vẫn thuộc phạm vi sau.

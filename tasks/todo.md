@@ -26,7 +26,7 @@ Trạng thái ngày 27/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. C
 
 | Mã | Việc | Sau | Nghiệm thu và kiểm tra |
 | --- | --- | --- | --- |
-| F01 | [x] Tạo môi trường phát triển tối thiểu | G03 | Docker dựng web Go và PostgreSQL từ DB trống. CI cấu hình chạy Go test, build, migration và smoke test HTTP với dữ liệu tổng hợp. |
+| F01 | [x] Tạo môi trường phát triển tối thiểu | G03 | Docker dựng cổng Go, frontend Next.js và PostgreSQL từ DB trống. CI chạy Go test, build, migration và smoke test HTTP với dữ liệu tổng hợp. |
 | F02 | [ ] Đăng nhập và cô lập tổ chức | F01 | Đã gắn tài khoản với sổ theo tổ chức và kiểm hai chủ trọ qua phòng, bảng kê, CSV, ghi thu, ngân hàng và link riêng. Còn quyền nhiều tòa trong một tổ chức, quản trị tài khoản và audit truy cập hỗ trợ. |
 | F03 | [ ] Quản lý tòa và danh sách phòng | F02 | Tạo một tòa, lưu mã phòng duy nhất trong tòa, hiển thị và tìm phòng trên điện thoại. Test retry/validation và truy cập chéo org. |
 | F04 | [ ] Ghi hợp đồng và đại diện | F03 | Đã có lịch điều khoản theo tháng, ký lại, và bắt đầu hợp đồng sau tháng trống bằng chỉ số bàn giao. Còn ngày vào/ra giữa tháng và tính theo ngày với phân đoạn công tơ. |

@@ -28,14 +28,27 @@ async function run() {
   const browser = await chromium.launch(channel ? {channel} : {});
   try {
     const owner = await browser.newPage();
+    const clientErrors = [];
+    owner.on('pageerror', error => clientErrors.push(error.message));
     await owner.goto(app + '/login');
-    await owner.getByLabel('Mật khẩu').fill(password);
+    const passwordInput = owner.getByLabel(/^Mật khẩu/);
+    const togglePassword = owner.getByRole('button', {name:'Hiện hoặc ẩn mật khẩu'});
+    await passwordInput.fill(password);
+    await togglePassword.click();
+    await owner.waitForFunction(() => document.querySelector('[name="password"]').type === 'text');
+    await togglePassword.click();
+    assert.equal(await passwordInput.getAttribute('type'), 'password');
     await owner.getByRole('button', {name:'Đăng nhập', exact:true}).click();
     await show(owner, 'Tổng quan kỳ thu');
     await owner.goto(`${app}/?tab=rooms&period=${period}`);
     if (process.env.ZS_BROWSER_ENV_FILE) {
-      const demoRooms = owner.locator('[data-room^="HD-MAU-2026-11-"]');
+      const demoRooms = owner.locator('article').filter({hasText:'HD-MAU-2026-11-'});
       assert.equal(await demoRooms.count(), 6);
+      const search = owner.getByRole('searchbox', {name:'Tìm theo mã phòng'});
+      await search.fill('HD-MAU-2026-11-P04');
+      await owner.getByRole('link', {name:'Xem chi tiết phòng HD-MAU-2026-11-P05', exact:true}).waitFor({state:'hidden'});
+      assert.equal(await demoRooms.count(), 1);
+      await search.clear();
       assert.ok((await demoRooms.filter({hasText:'P04'}).textContent()).includes('18 tháng'));
       await owner.getByRole('link', {name:'Xem chi tiết phòng HD-MAU-2026-11-P05', exact:true}).click();
       await owner.getByText('Từ 2026-05 đến hết 2026-10', {exact:true}).waitFor();
@@ -53,6 +66,7 @@ async function run() {
     await owner.getByRole('link', {name:`Xem chi tiết phòng ${roomName}`, exact:true}).click();
     await show(owner, roomName);
     const roomURL = owner.url();
+    assert.deepEqual(clientErrors, [], 'The Next.js UI hydrates without runtime errors');
     for (const data of [
       {label:'Wi-Fi', amount:'80000', kind:'monthly'},
       {label:'Phụ thu vệ sinh', amount:'35000', kind:'once'},

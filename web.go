@@ -5,7 +5,7 @@ import (
 	"io/fs"
 )
 
-//go:embed web/app.html web/assets
+//go:embed web/assets/icon.svg
 var webFiles embed.FS
 
 func webAssets() fs.FS {

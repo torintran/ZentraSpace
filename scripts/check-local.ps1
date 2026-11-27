@@ -32,7 +32,13 @@ try {
         [Environment]::SetEnvironmentVariable($name, $config[$name], 'Process')
     }
 
-    docker @compose up --build -d --wait
+    try {
+        docker @compose up --build -d --wait
+    }
+    catch {
+        docker @compose logs --tail 30 db migrate frontend web
+        throw
+    }
     docker @compose exec -T web zentraspace seed-demo 2026-11
     docker @compose exec -T web zentraspace seed-demo 2026-11
     & "$PSScriptRoot/smoke.ps1" -Base $base -EnvFile $envFile -CheckDemo -SecondOwnerPassword $secondOwnerPassword
