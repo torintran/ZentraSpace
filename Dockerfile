@@ -1,9 +1,9 @@
 FROM golang:1.27-alpine AS build
 WORKDIR /app
-COPY go.mod go.sum ./
+COPY backend/go.mod backend/go.sum ./
 RUN go mod download
-COPY . .
-RUN go test ./... && CGO_ENABLED=0 go build -trimpath -o /out/zentraspace .
+COPY backend/ .
+RUN go test ./... && CGO_ENABLED=0 go build -trimpath -o /out/zentraspace ./cmd/zentraspace
 FROM alpine:3.22
 WORKDIR /app
 COPY --from=build /out/zentraspace /usr/local/bin/zentraspace

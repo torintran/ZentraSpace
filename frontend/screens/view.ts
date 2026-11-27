@@ -34,6 +34,8 @@ type Reading = {
 };
 type Lease = {
   Tenant: string;
+  Phone: string;
+  SignedOn: string;
   Effective: string;
   Rent: number;
   ElectricRate: number;
@@ -52,6 +54,7 @@ type Room = {
   Electric: number;
   Water: number;
   LeaseMonths: number;
+  Prepared?: boolean;
 };
 type RoomView = Room & {
   Done: boolean;
@@ -203,6 +206,7 @@ export type PageData = {
   RoomFees: RoomFee[] | null;
   Lease: Lease;
   LeaseHistory: Lease[] | null;
+  LeaseDocuments: Record<string, boolean> | null;
   LeaseForm: boolean;
   RoomForm: boolean;
   LockOpening: boolean;
@@ -279,7 +283,9 @@ export function until(lease: Lease) {
 }
 export function activeAt(lease: Lease, period: string) {
   const end = until(lease);
-  return period >= lease.Effective && (!end || period <= end);
+  return (
+    !!lease.Effective && period >= lease.Effective && (!end || period <= end)
+  );
 }
 export function reversed(invoice: Invoice, key: string) {
   return invoice.Entries?.some((entry) => entry.Reverses === key) ?? false;

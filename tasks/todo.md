@@ -77,3 +77,12 @@ VietQR riêng và duyệt sao kê thủ công đã qua kiểm thử cục bộ v
 | A06 | [ ] AI gợi ý chỉ số | F06, có bộ ảnh và mục đích xử lý được duyệt | Đo lỗi trên ảnh thực, xóa metadata, kiểm đúng công tơ, người duyệt xác nhận trước khi tính tiền. Đo sai số ảnh hưởng tiền trước khi đề xuất tự duyệt. |
 | A07 | [ ] Chính sách phí nâng cao | A01 hoặc A02 theo ca sử dụng | Resolver theo scope, mô phỏng và publish không đổi bảng kê cũ. Kiểm fixture policy/rule giao thời. CEL chỉ thêm khi calculator có sẵn không đủ. |
 | A08 | [ ] Vận hành mở rộng | F13, có nhu cầu tự cài, job hoặc tải đã đo | Release self-host có license chốt, tài liệu cài/restore; tách worker khi cần retry nền. Thử notification, adapter bổ sung, multi-node hoặc site tài liệu theo từng nhu cầu riêng. |
+
+## Tiếp theo sau luồng chuẩn bị phòng
+
+| Ưu tiên | Tính năng | Tiêu chí nghiệm thu |
+| --- | --- | --- |
+| 1 | Mẫu giá và phí dùng chung | Chủ trọ tạo một mẫu và áp dụng cho nhiều phòng. Có màn xem trước và ngày hiệu lực. Bảng kê đã phát hành giữ nguyên. |
+| 2 | Bàn giao và trả phòng | Lưu ngày vào hoặc ra, chỉ số bàn giao, công nợ, hoàn cọc và các khoản khấu trừ. Phòng xuất hiện lại trong danh sách phòng trống từ kỳ đã xác nhận. |
+| 3 | Quản lý hợp đồng sắp hết hạn | Xem hợp đồng sắp hết hạn, mở luồng ký lại và giữ lịch sử các lần gia hạn. |
+| 4 | Hồ sơ nhiều người ở và nhiều tệp | Quản lý người đại diện, người ở cùng và phụ lục. Chủ trọ tải đúng tệp của đúng kỳ theo quyền tổ chức. |

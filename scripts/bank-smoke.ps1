@@ -50,7 +50,7 @@ $account = if ($MockBase) { '0000000000000' } else { '9999000000001' }
 $p=Page $owner '/bank/account' @{csrf=$csrf;bin='970407';account=$account;holder='TAI KHOAN MAU';confirm='yes'}
 Check ($p.StatusCode -eq 200 -and $p.Content.Contains('Đã lưu tài khoản nhận tiền')) 'owner configured a test beneficiary'
 
-$p=Page $owner '/action/room' @{csrf=$csrf;period=$period;name=$room;rent='2800000';electricRate='3000';waterRate='10000';electric='0';water='0'}
+$p=Page $owner '/action/room' @{csrf=$csrf;period=$period;name=$room;tenant='Khách thuê mô phỏng';rent='2800000';electricRate='3000';waterRate='10000';electric='0';water='0'}
 $p=Page $owner "/?tab=meters&period=$period"
 $form=[regex]::Matches($p.Content,'(?s)<form class="meter-row".*?</form>') | Where-Object {$_.Value.Contains("<strong>$room</strong>")} | Select-Object -First 1
 $roomId=Capture $form.Value 'name="id" value="([a-f0-9]+)"'

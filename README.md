@@ -1,6 +1,6 @@
 # ZentraSpace
 
-Bản chạy thử cục bộ cho chủ trọ một tòa. Luồng chính gồm nhập phòng và người đại diện, lưu công tơ, tạo bảng kê nháp, phát hành, chia sẻ riêng, ghi thu hoặc điều chỉnh và xuất công nợ.
+Bản chạy thử cục bộ cho chủ trọ một tòa. Luồng chính gồm chuẩn bị phòng và phí, tiếp nhận người thuê, lưu hợp đồng, chốt công tơ, phát hành bảng kê, chia sẻ riêng và theo dõi công nợ.
 
 ## Chạy trên Windows với Docker Desktop
 
@@ -18,7 +18,11 @@ Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để n
 
 Để sửa một khoản thu hoặc ghi giảm nhập sai, mở **Lịch sử giao dịch**, chọn **Đảo bút toán** và nhập lý do. Lịch sử giữ cả hai bút toán và mã tham chiếu chứng từ gốc. Khoản thu đã ghép sao kê cần kiểm tra lại giao dịch ngân hàng trước khi điều chỉnh.
 
-Để đổi người đại diện hoặc đơn giá cho tháng sau, mở **Phòng và hợp đồng → Xem chi tiết → Thêm điều khoản**. Điều khoản có hiệu lực từ ngày đầu tháng đã chọn. Bảng kê nháp dùng điều khoản của kỳ tương ứng. Bảng kê đã phát hành giữ nguyên nội dung.
+Trong **Phòng và hợp đồng**, có thể tạo phòng trước và để trống người đại diện, kể cả khi nhập từ CSV. Đặt giá thuê và đơn giá điện nước khi tạo hoặc chỉnh sửa phòng, rồi mở **Giá và phí** để thêm phí riêng định kỳ. Phòng trống xuất hiện trong danh sách phòng và chưa vào hàng chờ nhập công tơ hoặc chốt kỳ thu.
+
+Khi có khách, chọn **Tiếp nhận người thuê**. Giá mặc định lấy từ hồ sơ phòng. Có thể nhập thời hạn, số điện thoại và ngày ký. Sau khi lưu, mở **Hợp đồng** để đính kèm một tệp PDF, JPG hoặc PNG tối đa 8 MB cho kỳ hiệu lực tương ứng. PostgreSQL giữ tệp dưới dạng mã hóa. Chỉ chủ trọ thuộc tổ chức của phòng tải được.
+
+Để đổi người đại diện hoặc đơn giá, chọn **Thêm hợp đồng** trong hồ sơ phòng. Hợp đồng có hiệu lực tính phí từ ngày đầu tháng đã chọn. Bảng kê nháp dùng điều khoản của kỳ tương ứng. Bảng kê đã phát hành giữ nguyên nội dung.
 
 Phòng không có hợp đồng hiệu lực được bỏ khỏi hàng chờ chốt chỉ số. Nếu cho thuê lại sau một kỳ trống, Chủ trọ nhập số lúc bàn giao và số cuối kỳ trong **Nhập điện nước**. Nếu thay công tơ điện hoặc nước giữa kỳ, ghi số cuối công tơ cũ, số đầu công tơ mới, số cuối kỳ và lý do. Bảng kê cho thấy sản lượng của hai đoạn cộng lại. Lý do lưu trong màn quản lý và chỉ số đã phát hành được khóa.
 
@@ -53,6 +57,11 @@ Webhook mô phỏng xác minh HMAC và thời gian gửi, ghi theo tài khoản 
 - Compose mẫu chỉ mở trên loopback để thử bằng dữ liệu mẫu. Trước pilot có người thuê cần môi trường HTTPS, chọn kênh xác minh đã đăng ký, quản lý khóa và backup tách biệt, kiểm tra trên thiết bị thật và tổ chức hai kỳ đối chiếu. Tệp `.env` chứa riêng khóa và thông tin đăng nhập của máy này.
 
 ## Kiểm tra lại
+
+Mã ứng dụng nằm trong hai thư mục:
+
+- `frontend/` chứa Next.js, màn hình nghiệp vụ, bố cục và thanh điều hướng.
+- `backend/` chứa Go module. Điểm vào nằm ở `cmd/zentraspace/`. Các tệp trong `internal/app/` chia theo khởi động, HTTP, phiên đăng nhập, phòng và hợp đồng, bảng kê, công tơ, thu chi, ngân hàng và lưu trữ.
 
 Dockerfile chạy test Go khi build. Từ thư mục dự án, chạy bộ kiểm tra dùng trong CI với Docker Compose và PowerShell 7.3 trở lên:
 

@@ -7,7 +7,9 @@ const { chromium } = require('playwright');
 const app = process.env.ZS_BROWSER_BASE || 'http://localhost:8092';
 const bank = process.env.ZS_BROWSER_MOCK || 'http://localhost:8093';
 const envFile = process.env.ZS_BROWSER_ENV_FILE || path.resolve(__dirname, '../../.env');
-const password = fs.readFileSync(envFile, 'utf8').match(/^ZS_OWNER_PASSWORD=([^\r\n]+)/m)?.[1];
+const config = fs.readFileSync(envFile, 'utf8');
+const password = config.match(/^ZS_OWNER_PASSWORD=([^\r\n]+)/m)?.[1];
+const meterPassword = config.match(/^ZS_METER_PASSWORD=([^\r\n]+)/m)?.[1];
 const period = '2026-11';
 const roomName = 'PW-' + crypto.randomBytes(4).toString('hex');
 const reference = roomName + '-PAY';
@@ -20,6 +22,87 @@ async function fields(form, values) {
   for (const [name, value] of Object.entries(values)) {
     await form.locator(`[name="${name}"]`).fill(value);
   }
+}
+
+async function checkRoomOnboarding(browser, owner, tenant) {
+  const name = roomName + '-TRONG';
+  await owner.setViewportSize({width:390, height:844});
+  await owner.goto(`${app}/?tab=rooms&period=${period}`);
+  await owner.getByRole('link', {name:'Thêm phòng', exact:true}).click();
+  await fields(owner.locator('form[action="/action/room"]'), {
+    name, rent:'1800000', electricRate:'3000', waterRate:'10000', electric:'11', water:'4',
+  });
+  await owner.getByRole('button', {name:'Lưu phòng', exact:true}).click();
+  await owner.locator('article').filter({hasText:name}).getByText('Phòng trống', {exact:true}).waitFor();
+  await owner.getByRole('link', {name:`Xem chi tiết phòng ${name}`, exact:true}).click();
+  const roomURL = owner.url();
+  await owner.getByRole('navigation', {name:'Mục trong hồ sơ phòng'}).getByRole('link', {name:'Giá và phí'}).click();
+  assert.equal(new URL(owner.url()).hash, '#room-fees');
+  assert.ok(await owner.evaluate(() => document.documentElement.scrollWidth === innerWidth));
+  await owner.getByText('Thêm khoản phí', {exact:true}).click();
+  const fee = owner.locator('form[action="/action/room-fee"]');
+  await fields(fee, {label:'Wi-Fi phòng trống', amount:'70000', start:period});
+  await fee.getByRole('button', {name:'Lưu khoản phí'}).click();
+  await owner.getByText('Wi-Fi phòng trống', {exact:true}).waitFor();
+  await owner.goto(`${app}/?tab=meters&period=${period}`);
+  assert.equal(await owner.locator('.meter-row').filter({hasText:name}).count(), 0);
+
+  await owner.goto(roomURL);
+  await owner.getByRole('link', {name:'Tiếp nhận người thuê', exact:true}).first().click();
+  const lease = owner.locator('form[action="/action/lease"]');
+  assert.equal(await lease.locator('[name="rent"]').inputValue(), '1800000');
+  await fields(lease, {
+    effective:period, tenant:'Người thuê mới', months:'12', phone:'0900000000', signedOn:'2026-11-01',
+  });
+  await lease.getByRole('button', {name:'Lưu hợp đồng'}).click();
+  const contract = owner.locator('#room-contracts article').filter({hasText:'Người thuê mới'});
+  await contract.getByText('Điện thoại 0900000000', {exact:true}).waitFor();
+  await contract.getByText('Đính kèm tệp hợp đồng', {exact:true}).click();
+  const upload = contract.locator('form');
+  const filePath = await upload.getAttribute('action');
+  const csrf = await upload.locator('[name="csrf"]').inputValue();
+  const invalid = await owner.request.post(app + filePath, {
+    headers:{Origin:app}, multipart:{csrf, document:{name:'wrong.pdf', mimeType:'application/pdf', buffer:Buffer.from('plain text')}},
+  });
+  assert.equal(invalid.status(), 422);
+  const pdf = Buffer.from('%PDF-1.4\n% ZentraSpace synthetic lease document\n%%EOF\n');
+  await upload.locator('[type="file"]').setInputFiles({name:'contract.pdf', mimeType:'application/pdf', buffer:pdf});
+  await upload.getByRole('button', {name:'Lưu tệp hợp đồng'}).click();
+  await contract.getByRole('link', {name:'Tải hợp đồng'}).waitFor();
+  const file = await owner.request.get(app + filePath);
+  assert.equal(file.status(), 200);
+  assert.match(file.headers()['content-disposition'], /^attachment;/);
+  assert.equal(file.headers()['cache-control'], 'no-store');
+  assert.ok((await file.body()).equals(pdf));
+  assert.equal((await tenant.request.get(app + filePath, {maxRedirects:0})).status(), 303);
+  for (const { username, credential, status } of [
+    {username:'meter', credential:meterPassword, status:403},
+    ...JSON.parse(process.env.ZS_STAFF_ACCOUNTS || '[]')
+      .filter(account => account.Username === 'owner-secondary')
+      .map(account => ({username:account.Username, credential:account.Password, status:404})),
+  ]) {
+    const session = await browser.newContext();
+    try {
+      const signIn = await session.request.post(app + '/login', {
+        headers:{Origin:app}, form:{account:username, password:credential}, maxRedirects:0,
+      });
+      assert.equal(signIn.status(), 303);
+      assert.equal((await session.request.get(app + filePath)).status(), status);
+    } finally {
+      await session.close();
+    }
+  }
+
+  await owner.goto(`${app}/?tab=meters&period=${period}`);
+  const row = owner.locator('.meter-row').filter({hasText:name});
+  await fields(row, {electric:'12', water:'5'});
+  await row.getByRole('button', {name:'Lưu chỉ số'}).click();
+  await owner.goto(`${app}/?tab=billing&period=${period}`);
+  await owner.getByRole('button', {name:'Tạo bảng kê nháp'}).click();
+  await owner.locator('article').filter({hasText:name}).getByRole('link', {name:'Xem bảng kê'}).click();
+  await owner.getByText('Wi-Fi phòng trống', {exact:true}).waitFor();
+  await owner.getByText('1.883.000 ₫', {exact:true}).waitFor();
+  console.log('PASS Playwright: prepare room and fees, start first lease, private document, then bill');
 }
 
 async function run() {
@@ -217,6 +300,7 @@ async function run() {
     await deposit.getByRole('button', {name:'Lưu giao dịch cọc'}).click();
     assert.equal((await invalidRefund).status(), 422);
     console.log('PASS Playwright: expense, deposit, refund, balances, private receipt and CSV, refund guard');
+    await checkRoomOnboarding(browser, owner, tenant);
   } finally {
     await browser.close();
   }

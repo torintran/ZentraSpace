@@ -73,7 +73,7 @@ export function RoomForm({ page }: { page: PageData }) {
         {!has(page.RoomDetail) ? (
           <>
             <label>
-              Thời hạn hợp đồng (tháng, không bắt buộc)
+              Thời hạn hợp đồng (tháng, nếu đã có người thuê)
               <FieldInput
                 name="months"
                 type="number"
@@ -86,16 +86,18 @@ export function RoomForm({ page }: { page: PageData }) {
         ) : null}
         {!has(page.LockRates) ? (
           <>
-            <label>
-              Người đại diện <span className="subtle">(không bắt buộc)</span>
-              <FieldInput
-                name="tenant"
-                maxLength={150}
-                defaultValue={
-                  has(page.RoomDetail) ? page.RoomDetail.Tenant : ''
-                }
-              />
-            </label>
+            {!page.RoomDetail?.Prepared && (
+              <label>
+                Người đại diện <span className="subtle">(không bắt buộc)</span>
+                <FieldInput
+                  name="tenant"
+                  maxLength={150}
+                  defaultValue={
+                    has(page.RoomDetail) ? page.RoomDetail.Tenant : ''
+                  }
+                />
+              </label>
+            )}
             <label>
               Tiền thuê mỗi tháng (đồng)
               <FieldInput

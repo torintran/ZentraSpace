@@ -1,12 +1,5 @@
-import {
-  ClipboardList,
-  DoorOpen,
-  Gauge,
-  Landmark,
-  LayoutDashboard,
-  LogOut,
-  Wallet,
-} from 'lucide-react';
+import { LogOut } from 'lucide-react';
+import { WorkspaceNav } from '../layout/workspace-nav';
 import { Action, Notice } from './components';
 import type { PageData, Screen } from './view';
 import { LoginScreen } from './login';
@@ -49,58 +42,6 @@ const wide = new Set<Screen>([
   'shared',
   'cash',
 ]);
-const navigation = [
-  { tab: 'dashboard', label: 'Tổng quan', Icon: LayoutDashboard },
-  { tab: 'billing', label: 'Chốt kỳ thu', Icon: ClipboardList },
-  { tab: 'meters', label: 'Nhập điện nước', Icon: Gauge },
-  { tab: 'rooms', label: 'Phòng và hợp đồng', Icon: DoorOpen },
-  { tab: 'bank', label: 'Đối soát ngân hàng', Icon: Landmark },
-  { tab: 'cash', label: 'Thu chi và cọc', Icon: Wallet },
-] as const;
-
-function WorkspaceNav({ page }: { page: PageData }) {
-  const period = page.Period || page.Invoice?.Period;
-  const selected =
-    page.Screen === 'home'
-      ? page.Tab
-      : (
-          {
-            'bank-review': 'bank',
-            invoice: 'billing',
-            invite: 'billing',
-            room: 'rooms',
-            import: 'rooms',
-          } as Record<string, string>
-        )[page.Screen] || page.Screen;
-  return (
-    <nav className="workspace-nav" aria-label="Quản lý kỳ thu">
-      <div className="layout workspace-nav-inner">
-        {navigation.map(({ tab, label, Icon }) => {
-          const params = new URLSearchParams(period ? { period } : {});
-          if (tab !== 'bank' && tab !== 'cash') params.set('tab', tab);
-          const query = params.size ? '?' + params.toString() : '';
-          const href =
-            tab === 'bank'
-              ? '/bank'
-              : tab === 'cash'
-                ? '/cash' + query
-                : '/' + query;
-          return (
-            <a
-              key={tab}
-              href={href}
-              aria-current={selected === tab ? 'page' : undefined}
-            >
-              <Icon aria-hidden size={18} strokeWidth={1.9} />
-              <span>{label}</span>
-            </a>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
 export function Screens({ page }: { page: PageData }) {
   const ScreenComponent = screens[page.Screen];
   return (

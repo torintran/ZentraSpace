@@ -53,11 +53,16 @@ try {
 BEGIN;
 SELECT set_config('app.organization', 'restore-check-org', true);
 INSERT INTO books (organization, sealed) VALUES ('restore-check-org', decode('00', 'hex'));
+INSERT INTO lease_documents (organization, room_id, effective, sealed)
+VALUES ('restore-check-org', 'sample-room', '2026-11', decode('00', 'hex'));
 SET LOCAL ROLE zentra_runtime;
 DO $$
 BEGIN
     IF (SELECT array_agg(organization) FROM books) IS DISTINCT FROM ARRAY['restore-check-org'] THEN
         RAISE EXCEPTION 'Runtime role can see rows outside its organization or cannot see its own row';
+    END IF;
+    IF (SELECT array_agg(organization) FROM lease_documents) IS DISTINCT FROM ARRAY['restore-check-org'] THEN
+        RAISE EXCEPTION 'Runtime role can read documents outside its organization or cannot read its own documents';
     END IF;
     BEGIN
         INSERT INTO books (organization, sealed) VALUES ('other-org', decode('00', 'hex'));
@@ -70,8 +75,8 @@ $$;
 SELECT set_config('app.organization', '', true);
 DO $$
 BEGIN
-    IF EXISTS (SELECT FROM books) THEN
-        RAISE EXCEPTION 'Runtime role without an organization can read books';
+    IF EXISTS (SELECT FROM books) OR EXISTS (SELECT FROM lease_documents) THEN
+        RAISE EXCEPTION 'Runtime role without an organization can read private data';
     END IF;
 END
 $$;
@@ -82,17 +87,17 @@ ROLLBACK;
     docker @compose exec -T db pg_dump -U postgres -Fc -f /tmp/zentraspace-check.dump zentraspace
     docker @compose exec -T db createdb -U postgres zentraspace_restore
     docker @compose exec -T db pg_restore -U postgres --exit-on-error -d zentraspace_restore /tmp/zentraspace-check.dump
-    $snapshot = "SELECT organization, '' AS receipt, sealed FROM books UNION ALL SELECT organization, entry_key, sealed FROM cash_receipts ORDER BY 1, 2"
+    $snapshot = "SELECT organization, '' AS record_key, sealed FROM books UNION ALL SELECT organization, entry_key, sealed FROM cash_receipts UNION ALL SELECT organization, room_id || '/' || effective, sealed FROM lease_documents ORDER BY 1, 2"
     $original = docker @compose exec -T db psql -X -U postgres -d zentraspace -At -v ON_ERROR_STOP=1 -c $snapshot
     $restored = docker @compose exec -T db psql -X -U postgres -d zentraspace_restore -At -v ON_ERROR_STOP=1 -c $snapshot
     if (!$original -or ($original -join "`n") -cne ($restored -join "`n")) {
         throw 'Restored books differ from the source database.'
     }
-    $visible = docker @compose exec -T db psql -X -U postgres -d zentraspace_restore -qAt -v ON_ERROR_STOP=1 -c 'SET ROLE zentra_runtime; SELECT (SELECT count(*) FROM books) + (SELECT count(*) FROM cash_receipts)'
+    $visible = docker @compose exec -T db psql -X -U postgres -d zentraspace_restore -qAt -v ON_ERROR_STOP=1 -c 'SET ROLE zentra_runtime; SELECT (SELECT count(*) FROM books) + (SELECT count(*) FROM cash_receipts) + (SELECT count(*) FROM lease_documents)'
     if ($visible -ne '0') {
         throw 'Restored database exposes books to the runtime role without an organization.'
     }
-    'PASS isolated restore preserves encrypted books and runtime read restrictions'
+    'PASS isolated restore preserves encrypted books and documents with runtime read restrictions'
 }
 finally {
     try {

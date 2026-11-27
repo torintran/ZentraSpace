@@ -15,8 +15,8 @@ export function RoomsPanel({ page }: { page: PageData }) {
           <Panel className="card room-form" as="section">
             <h2>Thêm phòng</h2>
             <p className="subtle">
-              Kỳ đầu tiên của hợp đồng là <strong>{page.Period}</strong>. Nhập
-              đơn giá đã được xác nhận.
+              Chuẩn bị phòng từ kỳ <strong>{page.Period}</strong>. Bạn có thể
+              lưu giá phòng ngay và để trống tên người thuê.
             </p>
             <RoomForm page={page} />
           </Panel>
@@ -42,6 +42,9 @@ export function RoomsPanel({ page }: { page: PageData }) {
                     <article className="list-row">
                       <div>
                         <strong>{room.Name}</strong>
+                        {!room.HasLease && (
+                          <Status className="badge">Phòng trống</Status>
+                        )}
                         {has(room.Renewed) ? (
                           <>
                             {' '}
@@ -66,7 +69,7 @@ export function RoomsPanel({ page }: { page: PageData }) {
                               )}
                             </>
                           ) : (
-                            <>Chưa có hợp đồng hiệu lực kỳ này</>
+                            <>Sẵn sàng tiếp nhận người thuê</>
                           )}
                         </p>
                       </div>
@@ -93,7 +96,8 @@ export function RoomsPanel({ page }: { page: PageData }) {
             <summary>Nhập danh sách CSV</summary>
             <p className="subtle">
               Điền thông tin vào mẫu, rồi dán nội dung CSV vào ô bên dưới. Kỳ
-              đầu của các phòng được nhập là {page.Period}.
+              đầu của các phòng được nhập là {page.Period}. Dòng bỏ trống người
+              đại diện sẽ tạo phòng trống.
             </p>
             <p>
               <ActionLink
