@@ -28,6 +28,8 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.Query().Get("saved") == "1" {
 		p.Message = "Đã lưu."
+	} else if tab == "policies" && r.URL.Query().Get("saved") == "policy-applied" {
+		p.Message = "Đã lên lịch áp dụng mẫu giá và phí."
 	}
 	if err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
 		if tab == "dashboard" {
@@ -37,7 +39,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		if tab == "billing" {
 			p.BillingSettings = b.Billing[period]
 		}
-		if tab == "rooms" || tab == "sites" {
+		if tab == "rooms" || tab == "sites" || tab == "policies" {
 			p.Sites = b.siteViews(period)
 		}
 		if tab == "rooms" || tab == "policies" {

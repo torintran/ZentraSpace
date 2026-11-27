@@ -224,6 +224,19 @@ type Dashboard = {
     | null;
 };
 export type PageData = {
+  PolicyPreview: {
+    Scope: string;
+    ScopeName: string;
+    Effective: string;
+    Revision: string;
+    Policy: RoomPolicy;
+    Rooms:
+      | { ID: string; Name: string; Blocked: string; Before: RoomPolicy }[]
+      | null;
+    Eligible: number;
+  } | null;
+  RoomPolicyFee: FeeLine;
+  RoomHasScheduledPolicy: boolean;
   LoginProfile: string;
   Sites: Site[] | null;
   Policies: RoomPolicy[] | null;

@@ -1064,3 +1064,6 @@ main.layout {
   .login-account-name {
   display: none;
 }
+.lease-pricing:has([name='useScheduledPrice']:checked) .lease-manual-pricing {
+  display: none;
+}

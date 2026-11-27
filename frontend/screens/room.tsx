@@ -133,40 +133,55 @@ export function RoomScreen({ page }: { page: PageData }) {
                   <FieldInput type="date" name="signedOn" />
                 </label>
               </div>
-              <label>
-                Tiền thuê mỗi tháng (đồng)
-                <FieldInput
-                  name="rent"
-                  type="number"
-                  min="0"
-                  max="100000000"
-                  required
-                  defaultValue={page.Lease.Rent}
-                />
-              </label>
-              <div className="pair">
-                <label>
-                  Giá điện (đồng/kWh)
-                  <FieldInput
-                    name="electricRate"
-                    type="number"
-                    min="0"
-                    max="100000"
-                    required
-                    defaultValue={page.Lease.ElectricRate}
-                  />
-                </label>
-                <label>
-                  Giá nước (đồng/m³)
-                  <FieldInput
-                    name="waterRate"
-                    type="number"
-                    min="0"
-                    max="1000000"
-                    required
-                    defaultValue={page.Lease.WaterRate}
-                  />
-                </label>
+              <div className="lease-pricing form">
+                {page.RoomHasScheduledPolicy && (
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      name="useScheduledPrice"
+                      value="yes"
+                      defaultChecked={!occupied}
+                    />
+                    Dùng giá theo kỳ hiệu lực đã chọn
+                  </label>
+                )}
+                <div className="lease-manual-pricing form">
+                  <label>
+                    Tiền thuê mỗi tháng (đồng)
+                    <FieldInput
+                      name="rent"
+                      type="number"
+                      min="0"
+                      max="100000000"
+                      required
+                      defaultValue={page.Lease.Rent}
+                    />
+                  </label>
+                  <div className="pair">
+                    <label>
+                      Giá điện (đồng/kWh)
+                      <FieldInput
+                        name="electricRate"
+                        type="number"
+                        min="0"
+                        max="100000"
+                        required
+                        defaultValue={page.Lease.ElectricRate}
+                      />
+                    </label>
+                    <label>
+                      Giá nước (đồng/m³)
+                      <FieldInput
+                        name="waterRate"
+                        type="number"
+                        min="0"
+                        max="1000000"
+                        required
+                        defaultValue={page.Lease.WaterRate}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
               <div className="room-toolbar">
                 <Action>Lưu hợp đồng</Action>
@@ -324,9 +339,10 @@ export function RoomScreen({ page }: { page: PageData }) {
             </Panel>
           </div>
           <Panel className="card history" id="room-fees" as="section">
-            {room.PolicyFee > 0 && (
+            {page.RoomPolicyFee.Amount > 0 && (
               <p className="notice">
-                Phí theo mẫu · {room.PolicyFeeLabel} · {money(room.PolicyFee)}
+                Phí theo mẫu · {page.RoomPolicyFee.Label} ·{' '}
+                {money(page.RoomPolicyFee.Amount)}
                 /tháng
               </p>
             )}

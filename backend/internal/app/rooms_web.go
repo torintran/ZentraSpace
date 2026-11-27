@@ -3,6 +3,7 @@ package app
 import (
 	"io"
 	"net/http"
+	"slices"
 )
 
 func (a *App) roomDetail(w http.ResponseWriter, r *http.Request) {
@@ -37,6 +38,14 @@ func (a *App) roomDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		p.LockOpening, p.LockRates = b.roomLocks(p.RoomDetail.ID)
 		p.Lease = b.leaseAt(*p.RoomDetail, p.Period)
+		p.RoomHasScheduledPolicy = slices.ContainsFunc(b.PolicyAssignments, func(assignment PolicyAssignment) bool {
+			return assignment.RoomID == p.RoomDetail.ID
+		})
+		p.RoomPolicyFee = p.Lease.recurringFee(*p.RoomDetail)
+		if !p.Lease.ActiveAt(p.Period) {
+			policy := b.policyAt(*p.RoomDetail, p.Period)
+			p.RoomPolicyFee = FeeLine{Label: policy.FeeLabel, Amount: policy.Fee}
+		}
 		p.LeaseHistory = b.leaseHistory(*p.RoomDetail)
 		p.PolicyMutable = p.RoomDetail.Prepared && len(p.LeaseHistory) == 0 && !p.LockRates
 		p.Residents = b.roomResidents(*p.RoomDetail, p.Period)

@@ -2,6 +2,7 @@ import { ArrowUpRight, MapPin } from 'lucide-react';
 import { Action, ActionLink, FieldInput, Panel } from './components';
 import { money } from './view';
 import type { PageData } from './view';
+import { PolicyBatchForm, PolicyBatchPreview } from './policy-batch';
 
 export function SitesPanel({ page }: { page: PageData }) {
   return (
@@ -87,100 +88,106 @@ export function SitesPanel({ page }: { page: PageData }) {
 }
 
 export function PoliciesPanel({ page }: { page: PageData }) {
+  if (page.PolicyPreview) {
+    return <PolicyBatchPreview page={page} preview={page.PolicyPreview} />;
+  }
   return (
-    <div className="columns">
-      <Panel className="card">
-        <h2>Mẫu đã lưu</h2>
-        {(page.Policies ?? []).map((policy) => (
-          <article className="list-row" key={policy.ID}>
-            <div>
-              <strong>{policy.Name}</strong>
-              <p>
-                {money(policy.Rent)}/tháng · Điện {money(policy.ElectricRate)}
-                /kWh · Nước {money(policy.WaterRate)}/m³
-              </p>
-              {policy.Fee > 0 && (
+    <>
+      <div className="columns">
+        <Panel className="card">
+          <h2>Mẫu đã lưu</h2>
+          {(page.Policies ?? []).map((policy) => (
+            <article className="list-row" key={policy.ID}>
+              <div>
+                <strong>{policy.Name}</strong>
                 <p>
-                  {policy.FeeLabel} · {money(policy.Fee)}/tháng
+                  {money(policy.Rent)}/tháng · Điện {money(policy.ElectricRate)}
+                  /kWh · Nước {money(policy.WaterRate)}/m³
                 </p>
-              )}
+                {policy.Fee > 0 && (
+                  <p>
+                    {policy.FeeLabel} · {money(policy.Fee)}/tháng
+                  </p>
+                )}
+              </div>
+            </article>
+          ))}
+          {!page.Policies?.length && (
+            <p className="subtle">
+              Chưa có mẫu nào. Lưu một mẫu để dùng lại khi tạo phòng.
+            </p>
+          )}
+        </Panel>
+        <Panel className="card">
+          <h2>Tạo mẫu giá và phí</h2>
+          <form className="form" method="post" action="/action/policy">
+            <input type="hidden" name="csrf" value={page.CSRF} />
+            <input type="hidden" name="period" value={page.Period} />
+            <label>
+              Tên mẫu
+              <FieldInput
+                name="name"
+                placeholder="Ví dụ Phòng tiêu chuẩn"
+                maxLength={120}
+                required
+              />
+            </label>
+            <label>
+              Tiền thuê mỗi tháng (đồng)
+              <FieldInput
+                name="rent"
+                type="number"
+                min={0}
+                max={100000000}
+                required
+              />
+            </label>
+            <div className="pair">
+              <label>
+                Điện (đồng/kWh)
+                <FieldInput
+                  name="electricRate"
+                  type="number"
+                  min={0}
+                  max={100000}
+                  required
+                />
+              </label>
+              <label>
+                Nước (đồng/m³)
+                <FieldInput
+                  name="waterRate"
+                  type="number"
+                  min={0}
+                  max={1000000}
+                  required
+                />
+              </label>
             </div>
-          </article>
-        ))}
-        {!page.Policies?.length && (
-          <p className="subtle">
-            Chưa có mẫu nào. Lưu một mẫu để dùng lại khi tạo phòng.
-          </p>
-        )}
-      </Panel>
-      <Panel className="card">
-        <h2>Tạo mẫu giá và phí</h2>
-        <form className="form" method="post" action="/action/policy">
-          <input type="hidden" name="csrf" value={page.CSRF} />
-          <input type="hidden" name="period" value={page.Period} />
-          <label>
-            Tên mẫu
-            <FieldInput
-              name="name"
-              placeholder="Ví dụ Phòng tiêu chuẩn"
-              maxLength={120}
-              required
-            />
-          </label>
-          <label>
-            Tiền thuê mỗi tháng (đồng)
-            <FieldInput
-              name="rent"
-              type="number"
-              min={0}
-              max={100000000}
-              required
-            />
-          </label>
-          <div className="pair">
             <label>
-              Điện (đồng/kWh)
+              Tên khoản phí định kỳ
               <FieldInput
-                name="electricRate"
-                type="number"
-                min={0}
-                max={100000}
-                required
+                name="feeLabel"
+                placeholder="Ví dụ Phí Wi-Fi"
+                maxLength={120}
               />
             </label>
             <label>
-              Nước (đồng/m³)
+              Phí mỗi tháng (đồng)
               <FieldInput
-                name="waterRate"
+                name="fee"
                 type="number"
                 min={0}
-                max={1000000}
+                max={100000000}
+                defaultValue={0}
                 required
               />
             </label>
-          </div>
-          <label>
-            Tên khoản phí định kỳ
-            <FieldInput
-              name="feeLabel"
-              placeholder="Ví dụ Phí Wi-Fi"
-              maxLength={120}
-            />
-          </label>
-          <label>
-            Phí mỗi tháng (đồng)
-            <FieldInput
-              name="fee"
-              type="number"
-              min={0}
-              max={100000000}
-              defaultValue={0}
-              required
-            />
-          </label>
-          <Action>Lưu mẫu giá và phí</Action>
-        </form>
-      </Panel>
-    </div>
+            <Action>Lưu mẫu giá và phí</Action>
+          </form>
+        </Panel>
+      </div>
+      <PolicyBatchForm page={page} />
+    </>
   );
 }

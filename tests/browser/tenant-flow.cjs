@@ -131,7 +131,7 @@ async function checkPropertyWorkspace(owner, tenant) {
   console.log('PASS Playwright: collapsible desktop sidebar remembers the setting across navigation and reload');
   const siteName = roomName + '-DAY';
   const site = owner.locator('form[action="/action/site"]');
-  await fields(site, {name:siteName, address:'Địa chỉ mô phỏng', capacity:'1'});
+  await fields(site, {name:siteName, address:'Địa chỉ mô phỏng', capacity:'3'});
   await site.locator('summary').click();
   await fields(site, {coordinates:'10.7769, 106.7009'});
   await site.getByRole('button', {name:'Lưu dãy trọ'}).click();
@@ -143,7 +143,7 @@ async function checkPropertyWorkspace(owner, tenant) {
   const policy = owner.locator('form[action="/action/policy"]');
   await fields(policy, {name:policyName, rent:'1200000', electricRate:'3000', waterRate:'10000', fee:'50000', feeLabel:'Wi-Fi theo mẫu'});
   await policy.getByRole('button', {name:'Lưu mẫu giá và phí'}).click();
-  await owner.getByText(policyName, {exact:true}).waitFor();
+  await owner.locator('article').getByText(policyName, {exact:true}).waitFor();
   await sidebar.getByRole('link', {name:'Dãy trọ', exact:true}).click();
   await siteRow.getByRole('link', {name:'Xem phòng'}).click();
   await owner.getByRole('link', {name:'Thêm phòng', exact:true}).click();
@@ -158,6 +158,13 @@ async function checkPropertyWorkspace(owner, tenant) {
   await room.getByRole('button', {name:'Lưu phòng', exact:true}).click();
   const roomCard = owner.locator('article').filter({hasText:name});
   assert.equal(await roomCard.getAttribute('data-room-state'), 'vacant');
+  for (const suffix of ['P02', 'P03']) {
+    const extra = await owner.request.post(app + '/action/room', {
+      headers:{Origin:app}, form:{csrf, period, name:roomName+'-'+suffix, site:siteID, rent:'700000',
+        electricRate:'1000', waterRate:'5000', electric:'0', water:'0'}, maxRedirects:0,
+    });
+    assert.equal(extra.status(), 303);
+  }
   const tooManyRooms = await owner.request.post(app + '/action/room', {
     headers:{Origin:app}, form:{csrf, period, name:name+'-extra', site:siteID, policy:policyID, electric:'0', water:'0'},
   });
@@ -211,6 +218,28 @@ async function checkPropertyWorkspace(owner, tenant) {
   await timeline.getByText('Hợp đồng có hiệu lực', {exact:true}).waitFor();
   await timeline.getByText('Thu tiền phòng', {exact:true}).waitFor();
   await timeline.getByText('90.000 ₫', {exact:true}).waitFor();
+
+  await owner.goto(`${app}/?tab=policies&period=${period}`);
+  const batch = owner.locator('form[action="/action/policy-preview"]');
+  await batch.locator('[name="scope"]').selectOption({label:siteName});
+  await batch.locator('[name="policy"]').selectOption({label:policyName});
+  await fields(batch, {effective:'2026-12'});
+  await batch.getByRole('button', {name:'Xem trước thay đổi'}).click();
+  await owner.getByText('2 phòng đủ điều kiện', {exact:true}).waitFor();
+  await owner.locator('article').filter({hasText:name}).getByText('Bỏ qua · Phòng đã có hồ sơ hợp đồng').waitFor();
+  await owner.getByRole('button', {name:'Áp dụng cho 2 phòng'}).click();
+  await owner.getByRole('status').filter({hasText:'Đã lên lịch áp dụng mẫu giá và phí'}).waitFor();
+  await owner.goto(`${app}/?tab=rooms&period=${period}&site=${siteID}`);
+  await owner.getByRole('link', {name:`Xem chi tiết phòng ${roomName}-P02`, exact:true}).click();
+  await owner.locator('#room-timeline').getByText('Đã lên lịch áp dụng mẫu giá').waitFor();
+  await owner.getByRole('link', {name:'Tiếp nhận người thuê', exact:true}).first().click();
+  const scheduledLease = owner.locator('form[action="/action/lease"]');
+  const tariff = scheduledLease.getByRole('checkbox', {name:'Dùng giá theo kỳ hiệu lực đã chọn'});
+  assert.ok(await tariff.isChecked());
+  await fields(scheduledLease, {effective:'2026-12', tenant:'Người thuê dùng mẫu'});
+  await scheduledLease.getByRole('button', {name:'Lưu hợp đồng'}).click();
+  await owner.locator('#room-profile').getByText('1.200.000 ₫', {exact:true}).waitFor();
+  console.log('PASS Playwright: preview a dated policy batch, exclude the occupied room, and inherit prices on move-in');
 
   await owner.setViewportSize({width:320, height:820});
   await header.getByRole('button', {name:'Thu gọn thanh bên'}).waitFor({state:'hidden'});

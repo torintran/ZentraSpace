@@ -24,6 +24,8 @@ Tạo **Mẫu giá và phí** để dùng lại tiền thuê, đơn giá điện
 
 Để sửa một khoản thu hoặc ghi giảm nhập sai, mở **Lịch sử giao dịch**, chọn **Đảo bút toán** và nhập lý do. Lịch sử giữ cả hai bút toán và mã tham chiếu chứng từ gốc. Khoản thu đã ghép sao kê cần kiểm tra lại giao dịch ngân hàng trước khi điều chỉnh.
 
+Trong **Mẫu giá và phí**, chọn **Áp dụng mẫu cho nhiều phòng**, chọn dãy hoặc nhóm phòng chưa gán dãy và kỳ hiệu lực. Màn xem trước hiển thị giá và lý do bỏ qua của từng phòng. Khi xác nhận, các phòng đang chuẩn bị nhận bản sao mẫu theo kỳ đã chọn và ghi lần áp dụng vào lịch sử. Hợp đồng đã có và bảng kê đã phát hành giữ nguyên các mức đã ghi.
+
 Trong **Phòng và hợp đồng**, có thể tạo phòng trước và để trống người đại diện, kể cả khi nhập từ CSV. Đặt giá thuê và đơn giá điện nước khi tạo hoặc chỉnh sửa phòng, rồi mở **Giá và phí** để thêm phí riêng định kỳ. Phòng trống xuất hiện trong danh sách phòng và chưa vào hàng chờ nhập công tơ hoặc chốt kỳ thu.
 
 Khi có khách, chọn **Tiếp nhận người thuê**. Giá mặc định lấy từ hồ sơ phòng. Có thể nhập thời hạn, số điện thoại và ngày ký. Sau khi lưu, mở **Hợp đồng** để đính kèm một tệp PDF, JPG hoặc PNG tối đa 8 MB cho kỳ hiệu lực tương ứng. PostgreSQL giữ tệp dưới dạng mã hóa. Chỉ chủ trọ thuộc tổ chức của phòng tải được.

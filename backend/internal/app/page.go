@@ -12,6 +12,9 @@ type RoomView struct {
 	HasPhoto   bool
 }
 type Page struct {
+	PolicyPreview                                                             *PolicyPreview
+	RoomPolicyFee                                                             FeeLine
+	RoomHasScheduledPolicy                                                    bool
 	LoginProfile                                                              string
 	Sites                                                                     []SiteView
 	Policies                                                                  []RoomPolicy

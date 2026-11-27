@@ -9,6 +9,11 @@ type RoomEvent struct {
 
 func (b *Book) roomTimeline(room Room) []RoomEvent {
 	events := []RoomEvent{{Date: room.Start, Kind: "room", Title: "Bắt đầu quản lý phòng"}}
+	for _, assignment := range b.PolicyAssignments {
+		if assignment.RoomID == room.ID {
+			events = append(events, RoomEvent{Date: assignment.AppliedOn, Kind: "policy", Title: "Đã lên lịch áp dụng mẫu giá", Detail: assignment.Policy.Name + " · Từ kỳ " + assignment.Effective})
+		}
+	}
 	for _, terms := range b.leaseHistory(room) {
 		events = append(events, RoomEvent{Date: terms.Effective, Kind: "lease", Title: "Hợp đồng có hiệu lực", Detail: terms.Tenant})
 	}

@@ -70,6 +70,7 @@ type Invite struct {
 	Used, Revoked           bool
 }
 type Book struct {
+	PolicyAssignments []PolicyAssignment
 	Sites             []Site
 	Policies          []RoomPolicy
 	Residents         []Resident

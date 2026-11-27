@@ -31,6 +31,24 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 	period := periodOf(r.Form.Get("period"))
 	next := "/?tab=billing&saved=1&period=" + period
 	p := Page{Screen: "invite", Role: s.role, CSRF: hash(sessionID + ":csrf")}
+	if action == "policy-preview" {
+		var preview PolicyPreview
+		err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
+			var err error
+			preview, err = b.previewPolicy(r.Form.Get("scope"), r.Form.Get("policy"), r.Form.Get("effective"))
+			if err != nil {
+				return inputError{err}
+			}
+			return nil
+		})
+		if err != nil {
+			a.problem(w, r, err)
+			return
+		}
+		p.Screen, p.Tab, p.Period, p.PolicyPreview = "home", "policies", period, &preview
+		a.page(w, r, p)
+		return
+	}
 	if action == "import-preview" {
 		var preview ImportPreview
 		err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
@@ -74,6 +92,11 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{err}
 			}
 			next = "/?tab=policies&saved=1&period=" + period
+		case "policy-apply":
+			if err := b.applyPolicy(value("scope"), value("policy"), value("effective"), value("revision"), time.Now().In(vietnam).Format(time.DateOnly)); err != nil {
+				return inputError{err}
+			}
+			next = "/?tab=policies&saved=policy-applied&period=" + period
 		case "resident", "resident-out":
 			room := b.room(id)
 			if room == nil {
@@ -126,15 +149,25 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{err}
 			}
 		case "lease":
-			rent, e1 := number(r, "rent", 0, 100000000)
-			electric, e2 := number(r, "electricRate", 0, 100000)
-			water, e3 := number(r, "waterRate", 0, 1000000)
-			if e1 != nil || e2 != nil || e3 != nil {
-				return errInvalid
-			}
 			terms := LeaseTerms{RoomID: id, Effective: value("effective"), Tenant: value("tenant"),
 				Phone: value("phone"), SignedOn: value("signedOn"),
-				Rent: rent, ElectricRate: electric, WaterRate: water, Renewal: value("renewal") == "yes"}
+				Renewal: value("renewal") == "yes"}
+			if value("useScheduledPrice") == "yes" {
+				room := b.room(id)
+				if room == nil {
+					return errMissing
+				}
+				policy := b.policyAt(*room, terms.Effective)
+				terms.Rent, terms.ElectricRate, terms.WaterRate = policy.Rent, policy.ElectricRate, policy.WaterRate
+			} else {
+				var e1, e2, e3 error
+				terms.Rent, e1 = number(r, "rent", 0, 100000000)
+				terms.ElectricRate, e2 = number(r, "electricRate", 0, 100000)
+				terms.WaterRate, e3 = number(r, "waterRate", 0, 1000000)
+				if e1 != nil || e2 != nil || e3 != nil {
+					return errInvalid
+				}
+			}
 			if value("months") != "" {
 				months, err := number(r, "months", 1, 120)
 				if err != nil {

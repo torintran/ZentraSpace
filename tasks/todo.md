@@ -82,7 +82,7 @@ VietQR riêng và duyệt sao kê thủ công đã qua kiểm thử cục bộ v
 
 | Ưu tiên | Tính năng | Tiêu chí nghiệm thu |
 | --- | --- | --- |
-| 1 | Mẫu giá và phí dùng chung | Đã có tạo mẫu và gán vào từng phòng đang chuẩn bị. Còn áp dụng hàng loạt theo kỳ hiệu lực, xem trước thay đổi và ghi lịch sử phiên bản. |
+| 1 | Mẫu giá và phí dùng chung | Có xem trước và gán hàng loạt theo dãy hoặc nhóm chưa gán dãy, theo kỳ hiệu lực. Phòng đang chuẩn bị nhận bản sao giá, lịch sử phòng lưu lần áp dụng. |
 | 2 | Bàn giao và trả phòng | Lưu ngày vào hoặc ra, chỉ số bàn giao, công nợ, hoàn cọc và các khoản khấu trừ. Phòng xuất hiện lại trong danh sách phòng trống từ kỳ đã xác nhận. |
 | 3 | Quản lý hợp đồng sắp hết hạn | Xem hợp đồng sắp hết hạn, mở luồng ký lại và giữ lịch sử các lần gia hạn. |
 | 4 | Hồ sơ nhiều người ở và nhiều tệp | Quản lý người đại diện, người ở cùng và phụ lục. Chủ trọ tải đúng tệp của đúng kỳ theo quyền tổ chức. |

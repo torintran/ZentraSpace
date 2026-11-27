@@ -12,6 +12,9 @@ type LeaseTerms struct {
 	Months                        int
 	Renewal                       bool
 	Phone, SignedOn               string
+	PolicyFeeLabel                string
+	PolicyFee                     int64
+	PolicyFeeCaptured             bool
 }
 
 func (l LeaseTerms) Until() string {
@@ -56,7 +59,18 @@ func (b *Book) leaseAt(room Room, period string) LeaseTerms {
 			active = terms
 		}
 	}
+	if active.Effective == "" {
+		policy := b.policyAt(room, period)
+		active.Rent, active.ElectricRate, active.WaterRate = policy.Rent, policy.ElectricRate, policy.WaterRate
+	}
 	return active
+}
+
+func (l LeaseTerms) recurringFee(room Room) FeeLine {
+	if l.PolicyFeeCaptured {
+		return FeeLine{Label: l.PolicyFeeLabel, Amount: l.PolicyFee}
+	}
+	return FeeLine{Label: room.PolicyFeeLabel, Amount: room.PolicyFee}
 }
 
 func (b *Book) calculateInvoice(room Room, reading Reading, id string) Invoice {
@@ -68,9 +82,9 @@ func (b *Book) calculateInvoice(room Room, reading Reading, id string) Invoice {
 	settings := b.Billing[reading.Period]
 	invoice.DueDate, invoice.CommonFeeLabel, invoice.CommonFee = settings.DueDate, settings.CommonFeeLabel, settings.CommonFee
 	invoice.Total += invoice.CommonFee
-	if room.PolicyFee > 0 {
-		invoice.RoomFees = append(invoice.RoomFees, FeeLine{Label: room.PolicyFeeLabel, Amount: room.PolicyFee})
-		invoice.Total += room.PolicyFee
+	if fee := active.recurringFee(room); fee.Amount > 0 {
+		invoice.RoomFees = append(invoice.RoomFees, fee)
+		invoice.Total += fee.Amount
 	}
 	for _, fee := range b.RoomFees {
 		if fee.RoomID == room.ID && fee.applies(reading.Period) {
@@ -102,12 +116,15 @@ func (b *Book) scheduleLease(terms LeaseTerms) error {
 	}
 	for _, existing := range b.Leases {
 		if existing.RoomID == terms.RoomID && existing.Effective == terms.Effective {
+			terms.PolicyFeeLabel, terms.PolicyFee, terms.PolicyFeeCaptured = existing.PolicyFeeLabel, existing.PolicyFee, existing.PolicyFeeCaptured
 			if existing == terms {
 				return nil
 			}
 			return errors.New("Đã có điều khoản hiệu lực từ kỳ này.")
 		}
 	}
+	policy := b.policyAt(*room, terms.Effective)
+	terms.PolicyFeeLabel, terms.PolicyFee, terms.PolicyFeeCaptured = policy.FeeLabel, policy.Fee, true
 	if terms.Renewal {
 		start, _ := time.Parse("2006-01", terms.Effective)
 		priorPeriod := start.AddDate(0, -1, 0).Format("2006-01")
