@@ -78,18 +78,6 @@ func (a *App) leaseDocument(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Yêu cầu không hợp lệ.", http.StatusForbidden)
 		return
 	}
-	if err := a.store.book(ctx, org, false, func(b *Book) error {
-		room := b.room(roomID)
-		if room == nil || !slices.ContainsFunc(b.leaseHistory(*room), func(terms LeaseTerms) bool {
-			return terms.Effective == effective
-		}) {
-			return errMissing
-		}
-		return nil
-	}); err != nil {
-		a.problem(w, r, err)
-		return
-	}
 	file, _, err := r.FormFile("document")
 	if err != nil {
 		a.problem(w, r, inputError{errors.New("Chọn tệp hợp đồng.")})
@@ -106,7 +94,13 @@ func (a *App) leaseDocument(w http.ResponseWriter, r *http.Request) {
 		a.problem(w, r, err)
 		return
 	}
-	if err := a.store.withOrganizationTx(ctx, org, func(tx pgx.Tx) error {
+	if err := a.store.bookTransaction(ctx, org, true, func(b *Book, tx pgx.Tx) error {
+		room := b.room(roomID)
+		if room == nil || !slices.ContainsFunc(b.leaseHistory(*room), func(terms LeaseTerms) bool {
+			return terms.Effective == effective
+		}) {
+			return errMissing
+		}
 		result, err := tx.Exec(ctx, "INSERT INTO lease_documents (organization,room_id,effective,sealed) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING", org, roomID, effective, sealed)
 		if err == nil && result.RowsAffected() != 1 {
 			return inputError{errors.New("Hợp đồng đã có tệp đính kèm.")}
@@ -116,5 +110,9 @@ func (a *App) leaseDocument(w http.ResponseWriter, r *http.Request) {
 		a.problem(w, r, err)
 		return
 	}
-	http.Redirect(w, r, "/rooms/"+roomID+"?period="+effective+"&saved=document#room-contracts", http.StatusSeeOther)
+	next := "/rooms/" + roomID + "?period=" + effective + "&saved=document"
+	if r.FormValue("archive") == "1" {
+		next += "&history=1&kind=contracts&archivePeriod=" + effective
+	}
+	http.Redirect(w, r, next+"#room-contracts", http.StatusSeeOther)
 }

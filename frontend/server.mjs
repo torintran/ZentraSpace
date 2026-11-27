@@ -38,11 +38,15 @@ async function render(req, res) {
   }
 
   const nonce = randomBytes(18).toString('base64');
+  const locationPicker =
+    view.Role === 'owner' && view.Screen === 'home' && view.Tab === 'sites';
   const policy = [
     "default-src 'none'",
     "script-src 'self' 'nonce-" + nonce + "'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self'",
+    locationPicker
+      ? "img-src 'self' data: https://tile.openstreetmap.org"
+      : "img-src 'self'",
     "connect-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'none'",

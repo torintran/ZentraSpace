@@ -37,6 +37,7 @@ type Lease = {
   Phone: string;
   SignedOn: string;
   Effective: string;
+  EndedOn: string;
   Rent: number;
   ElectricRate: number;
   WaterRate: number;
@@ -75,6 +76,7 @@ type Site = {
   ID: string;
   Name: string;
   Address: string;
+  Coordinates: string;
   Capacity: number;
   Rooms: number;
   Occupied: number;
@@ -164,6 +166,7 @@ type Cash = {
   Expense: number;
   Received: number;
   Returned: number;
+  Applied: number;
   Held: number;
   Rows: CashRow[] | null;
   Rooms: { ID: string; Name: string; Held: number }[] | null;
@@ -224,6 +227,35 @@ type Dashboard = {
     | null;
 };
 export type PageData = {
+  RoomArchive: boolean;
+  ArchiveKind: string;
+  ArchivePeriod: string;
+  ArchivePage: number;
+  ArchivePages: number;
+  LeaseCount: number;
+  LeaseEmails: Record<string, string> | null;
+  VerificationEmail: string;
+  CodeDelivery: string;
+  ExpiringLeases: {RoomID: string; RoomName: string; Tenant: string; EndsOn: string; NextPeriod: string}[] | null;
+  RenewPeriod: string;
+  CheckoutForm: boolean;
+  CheckoutDate: string;
+  Today: string;
+  PeriodDate: string;
+  PeriodEnd: string;
+  NextLeasePeriod: string;
+  SMTP: {
+    Configured: boolean; Authenticated: boolean; CanEdit: boolean;
+    Address: string; Host: string; Port: string; Sender: string;
+    Mode: string; Username: string; Revision: string;
+  };
+  CheckoutError: string;
+  CheckoutQuote: {Date: string; Effective: string; Revision: string; Invoice: Invoice; Held: number; EarlierDue: number; Remaining: number} | null;
+  EditSiteLocation: boolean;
+  ShowSiteDetails: boolean;
+  EditSiteDetails: boolean;
+  SiteRevision: string;
+  RoomDeleteReason: string;
   PolicyPreview: {
     Scope: string;
     ScopeName: string;
@@ -340,6 +372,7 @@ export function randomKey() {
   return randomBytes(24).toString('hex');
 }
 export function until(lease: Lease) {
+  if (lease.EndedOn) return lease.EndedOn.slice(0, 7);
   if (!lease.Effective || lease.Months === 0) return '';
   const start = new Date(lease.Effective + '-01T00:00:00Z');
   start.setUTCMonth(start.getUTCMonth() + lease.Months - 1);
@@ -377,7 +410,7 @@ export function methodLabel(entry: Entry) {
 }
 export function kindLabel(row: CashRow) {
   return (
-    { expense: 'Chi phí', deposit_in: 'Nhận cọc', deposit_out: 'Hoàn cọc' }[
+    { expense: 'Chi phí', deposit_in: 'Nhận cọc', deposit_out: 'Hoàn cọc', deposit_applied: 'Cấn cọc vào bảng kê' }[
       row.Kind
     ] ?? row.Kind
   );

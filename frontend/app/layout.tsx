@@ -1,4 +1,5 @@
 import '@mantine/core/styles.css';
+import 'leaflet/dist/leaflet.css';
 import './screen.css';
 import { mantineHtmlProps } from '@mantine/core';
 import type { Metadata } from 'next';

@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { Action, ActionLink, Panel } from './components';
+import { FieldSelect, Action, ActionLink, Panel } from './components';
 import { clock, has, itemKey, money } from './view';
 import type { PageData, Invoice } from './view';
 
@@ -55,7 +55,7 @@ export function BankReviewScreen({ page }: { page: PageData }) {
             >
               <label>
                 Bảng kê đã phát hành
-                <select
+                <FieldSelect
                   name="invoice"
                   required
                   defaultValue={review.Selected?.ID || ''}
@@ -71,7 +71,7 @@ export function BankReviewScreen({ page }: { page: PageData }) {
                         </Fragment>
                       ))
                     : null}
-                </select>
+                </FieldSelect>
               </label>
               <Action className="secondary">Kiểm tra bảng kê</Action>
             </form>
@@ -104,7 +104,7 @@ export function BankReviewScreen({ page }: { page: PageData }) {
                   />
                   <label>
                     Cách ghi nhận
-                    <select name="existing" required>
+                    <FieldSelect name="existing" required>
                       <option value="">Chọn cách ghi</option>
                       <option value="new">Ghi một khoản thu mới</option>
                       {has(review.Existing)
@@ -117,7 +117,7 @@ export function BankReviewScreen({ page }: { page: PageData }) {
                             </Fragment>
                           ))
                         : null}
-                    </select>
+                    </FieldSelect>
                   </label>
                   <label className="check">
                     <input

@@ -98,15 +98,6 @@ func (a *App) roomPhoto(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Yêu cầu không hợp lệ.", http.StatusForbidden)
 		return
 	}
-	if err := a.store.book(ctx, org, false, func(b *Book) error {
-		if b.room(id) == nil {
-			return errMissing
-		}
-		return nil
-	}); err != nil {
-		a.problem(w, r, err)
-		return
-	}
 	file, _, err := r.FormFile("photo")
 	if err != nil {
 		a.problem(w, r, inputError{errors.New("Chọn ảnh phòng để tải lên.")})
@@ -125,7 +116,10 @@ func (a *App) roomPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 	sealed, err := encrypt(a.store.key, scope, photo)
 	if err == nil {
-		err = a.store.withOrganizationTx(ctx, org, func(tx pgx.Tx) error {
+		err = a.store.bookTransaction(ctx, org, true, func(b *Book, tx pgx.Tx) error {
+			if b.room(id) == nil {
+				return errMissing
+			}
 			_, err := tx.Exec(ctx, `INSERT INTO room_photos (organization,room_id,sealed) VALUES ($1,$2,$3)
 				ON CONFLICT (organization,room_id) DO UPDATE SET sealed=EXCLUDED.sealed`, org, id, sealed)
 			return err

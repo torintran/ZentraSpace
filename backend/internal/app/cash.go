@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	expense    = "expense"
-	depositIn  = "deposit_in"
-	depositOut = "deposit_out"
+	expense        = "expense"
+	depositIn      = "deposit_in"
+	depositOut     = "deposit_out"
+	depositApplied = "deposit_applied"
 )
 
 type CashEntry struct {
@@ -28,6 +29,8 @@ func (e CashEntry) KindLabel() string {
 		return "Nhận cọc"
 	case depositOut:
 		return "Hoàn cọc"
+	case depositApplied:
+		return "Cấn cọc vào bảng kê"
 	}
 	return e.Kind
 }
@@ -52,12 +55,12 @@ func (b *Book) postCash(e CashEntry) error {
 		if e.Category == "" || e.RoomID != "" {
 			return errInvalid
 		}
-	case depositIn, depositOut:
+	case depositIn, depositOut, depositApplied:
 		room := b.room(e.RoomID)
 		if room == nil || e.Category != "" || e.Date < room.Start+"-01" {
 			return errInvalid
 		}
-		if e.Kind == depositOut {
+		if e.Kind == depositOut || e.Kind == depositApplied {
 			if e.Note == "" {
 				return errors.New("Nhập lý do hoàn cọc.")
 			}
@@ -92,7 +95,7 @@ func (e CashEntry) depositDelta() int64 {
 	switch e.Kind {
 	case depositIn:
 		return e.Amount
-	case depositOut:
+	case depositOut, depositApplied:
 		return -e.Amount
 	}
 	return 0
@@ -114,9 +117,9 @@ type DepositRoom struct {
 }
 
 type CashReport struct {
-	RentNet, Expense, Received, Returned, Held int64
-	Rows                                       []CashRow
-	Rooms                                      []DepositRoom
+	RentNet, Expense, Received, Returned, Applied, Held int64
+	Rows                                                []CashRow
+	Rooms                                               []DepositRoom
 }
 
 func (b *Book) cashReport(period string) CashReport {
@@ -148,6 +151,8 @@ func (b *Book) cashReport(period string) CashReport {
 			report.Received += e.Amount
 		case depositOut:
 			report.Returned += e.Amount
+		case depositApplied:
+			report.Applied += e.Amount
 		}
 		report.Rows = append(report.Rows, row)
 	}

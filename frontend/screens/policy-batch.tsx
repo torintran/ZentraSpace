@@ -1,4 +1,10 @@
-import { Action, ActionLink, FieldInput, Panel } from './components';
+import {
+  FieldSelect,
+  Action,
+  ActionLink,
+  FieldInput,
+  Panel,
+} from './components';
 import { money } from './view';
 import type { PageData } from './view';
 
@@ -41,7 +47,7 @@ export function PolicyBatchForm({ page }: { page: PageData }) {
         <input type="hidden" name="period" value={page.Period} />
         <label>
           Mẫu giá và phí
-          <select name="policy" required defaultValue="">
+          <FieldSelect name="policy" required defaultValue="">
             <option value="" disabled>
               Chọn mẫu giá
             </option>
@@ -50,11 +56,11 @@ export function PolicyBatchForm({ page }: { page: PageData }) {
                 {policy.Name}
               </option>
             ))}
-          </select>
+          </FieldSelect>
         </label>
         <label>
           Nhóm phòng
-          <select name="scope" required defaultValue="">
+          <FieldSelect name="scope" required defaultValue="">
             <option value="" disabled>
               Chọn nhóm phòng
             </option>
@@ -64,7 +70,7 @@ export function PolicyBatchForm({ page }: { page: PageData }) {
                 {site.Name}
               </option>
             ))}
-          </select>
+          </FieldSelect>
         </label>
         <label>
           Kỳ hiệu lực

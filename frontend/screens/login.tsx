@@ -1,7 +1,7 @@
 import { TextInput } from '@mantine/core';
 import { LogIn } from 'lucide-react';
 import { LoginPassword } from './browser-controls';
-import { Action, Panel } from './components';
+import { FieldSelect, Action, Panel } from './components';
 import type { PageData } from './view';
 
 export function LoginScreen({ page }: { page: PageData }) {
@@ -12,11 +12,14 @@ export function LoginScreen({ page }: { page: PageData }) {
       <form method="post" action="/login" className="form login-form">
         <label>
           Tài khoản
-          <select name="profile" defaultValue={page.LoginProfile || 'owner'}>
+          <FieldSelect
+            name="profile"
+            defaultValue={page.LoginProfile || 'owner'}
+          >
             <option value="owner">Chủ trọ</option>
             <option value="meter">Nhân viên công tơ</option>
             <option value="other">Tài khoản khác</option>
-          </select>
+          </FieldSelect>
         </label>
         <TextInput
           className="login-account-name"

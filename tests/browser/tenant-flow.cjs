@@ -58,7 +58,7 @@ async function checkRoomOnboarding(browser, owner, tenant) {
   const contract = owner.locator('#room-contracts article').filter({hasText:'Người thuê mới'});
   await contract.getByText('Điện thoại 0900000000', {exact:true}).waitFor();
   await contract.getByText('Đính kèm tệp hợp đồng', {exact:true}).click();
-  const upload = contract.locator('form');
+  const upload = contract.locator('form[action$="/file"]');
   const filePath = await upload.getAttribute('action');
   const csrf = await upload.locator('[name="csrf"]').inputValue();
   const invalid = await owner.request.post(app + filePath, {
@@ -69,6 +69,13 @@ async function checkRoomOnboarding(browser, owner, tenant) {
   await upload.locator('[type="file"]').setInputFiles({name:'contract.pdf', mimeType:'application/pdf', buffer:pdf});
   await upload.getByRole('button', {name:'Lưu tệp hợp đồng'}).click();
   await contract.getByRole('link', {name:'Tải hợp đồng'}).waitFor();
+  await contract.getByText('Email xác minh bảng kê', {exact:true}).click();
+  const contact = contract.locator('form[action="/action/lease-email"]');
+  await fields(contact, {email:'tenant@example.test'});
+  await contact.getByRole('button', {name:'Lưu email'}).click();
+  await owner.getByRole('status').filter({hasText:'Đã lưu email xác minh'}).waitFor();
+  await contract.getByText('Email xác minh bảng kê', {exact:true}).click();
+  assert.equal(await contact.locator('input[name="email"]').inputValue(), 'tenant@example.test');
   const file = await owner.request.get(app + filePath);
   assert.equal(file.status(), 200);
   assert.match(file.headers()['content-disposition'], /^attachment;/);
@@ -105,7 +112,7 @@ async function checkRoomOnboarding(browser, owner, tenant) {
   console.log('PASS Playwright: prepare room and fees, start first lease, private document, then bill');
 }
 
-async function checkPropertyWorkspace(owner, tenant) {
+async function checkPropertyWorkspace(browser, owner, tenant) {
   await owner.setViewportSize({width:1440, height:900});
   await owner.goto(`${app}/?period=${period}`);
   const sidebar = owner.getByRole('navigation', {name:'Khu vực quản lý'});
@@ -132,11 +139,54 @@ async function checkPropertyWorkspace(owner, tenant) {
   const siteName = roomName + '-DAY';
   const site = owner.locator('form[action="/action/site"]');
   await fields(site, {name:siteName, address:'Địa chỉ mô phỏng', capacity:'3'});
-  await site.locator('summary').click();
-  await fields(site, {coordinates:'10.7769, 106.7009'});
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwqk8FAAItASeOCvhFAAAAAElFTkSuQmCC','base64');
+  await owner.route('https://tile.openstreetmap.org/**', route =>
+    route.fulfill({status:200, contentType:'image/png', body:png}));
+  await owner.context().grantPermissions(['geolocation'], {origin:app});
+  await owner.context().setGeolocation({latitude:10.7769, longitude:106.7009, accuracy:15});
+  await site.getByText('Chọn vị trí trên bản đồ', {exact:true}).click();
+  const map = site.getByRole('region', {name:'Bản đồ chọn vị trí dãy trọ'});
+  await map.locator('img.leaflet-tile-loaded').first().waitFor();
+  const locate = site.getByRole('button', {name:'Dùng vị trí hiện tại'});
+  await locate.click();
+  await site.getByText('Vị trí đã chọn: 10.776900, 106.700900', {exact:true}).waitFor();
+  await map.click({position:{x:45, y:75}});
+  assert.notEqual(await site.locator('[name="coordinates"]').inputValue(), '10.776900, 106.700900');
+  await locate.click();
+  await site.getByText('Vị trí đã chọn: 10.776900, 106.700900', {exact:true}).waitFor();
   await site.getByRole('button', {name:'Lưu dãy trọ'}).click();
   const siteRow = owner.locator('article').filter({hasText:siteName});
-  assert.match(await siteRow.getByRole('link', {name:'Mở bản đồ'}).getAttribute('href'), /openstreetmap\.org.*mlat=10\.776900/);
+  const sitePanel = owner.locator('#site-map-panel');
+  const siteDetails = owner.locator('#site-details-panel');
+  await sitePanel.getByRole('region', {name:'Bản đồ vị trí đã lưu'}).locator('svg path').first().waitFor();
+  assert.match(await sitePanel.getByRole('link', {name:'Mở OpenStreetMap'}).getAttribute('href'), /openstreetmap\.org.*mlat=10\.776900/);
+  assert.equal(await sitePanel.getByText('Xóa dãy trọ', {exact:true}).count(), 0);
+  const editBounds = await sitePanel.getByRole('link', {name:'Sửa vị trí', exact:true}).boundingBox();
+  const mapLinkBounds = await sitePanel.getByRole('link', {name:'Mở OpenStreetMap'}).boundingBox();
+  assert.equal(editBounds.height, 46);
+  assert.equal(mapLinkBounds.height, editBounds.height);
+  assert.equal(mapLinkBounds.y, editBounds.y);
+  const addBounds = await owner.getByRole('link', {name:'Thêm dãy trọ'}).boundingBox();
+  const rowBounds = await siteRow.boundingBox();
+  assert.ok(rowBounds.y - addBounds.y - addBounds.height >= 12);
+  await owner.setViewportSize({width:390, height:844});
+  await sitePanel.getByRole('link', {name:'Sửa vị trí', exact:true}).click();
+  const updateLocation = sitePanel.locator('form[action="/action/site-location"]');
+  await updateLocation.getByRole('region', {name:'Bản đồ chọn vị trí dãy trọ'}).locator('svg path').first().waitFor();
+  await updateLocation.getByText('Vị trí đã chọn: 10.776900,106.700900', {exact:true}).waitFor();
+  await owner.context().setGeolocation({latitude:10.7801, longitude:106.7012, accuracy:15});
+  await updateLocation.getByRole('button', {name:'Dùng vị trí hiện tại'}).click();
+  await updateLocation.getByText('Vị trí đã chọn: 10.780100, 106.701200', {exact:true}).waitFor();
+  assert.equal(await owner.evaluate(() => document.documentElement.scrollWidth), 390);
+  await updateLocation.getByRole('button', {name:'Lưu vị trí'}).click();
+  assert.match(await sitePanel.getByRole('link', {name:'Mở OpenStreetMap'}).getAttribute('href'), /mlat=10\.780100/);
+  await siteRow.getByRole('link', {name:'Chi tiết', exact:true}).click();
+  await siteDetails.getByRole('heading', {name:'Chi tiết dãy trọ'}).waitFor();
+  await siteDetails.getByText('Địa chỉ mô phỏng', {exact:true}).waitFor();
+  await siteDetails.getByText('0/3', {exact:true}).waitFor();
+  assert.equal(await owner.evaluate(() => document.documentElement.scrollWidth), 390);
+  await owner.setViewportSize({width:1440, height:900});
+  console.log('PASS Playwright: site details, aligned actions, map, and editing a saved location on mobile');
 
   await sidebar.getByRole('link', {name:'Mẫu giá và phí', exact:true}).click();
   const policyName = roomName + '-MAU';
@@ -176,7 +226,6 @@ async function checkPropertyWorkspace(owner, tenant) {
   await owner.getByText('Thêm ảnh phòng', {exact:true}).click();
   const photoForm = owner.locator('form[action$="/photo"]');
   const photoPath = await photoForm.getAttribute('action');
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwqk8FAAItASeOCvhFAAAAAElFTkSuQmCC','base64');
   await photoForm.locator('[type="file"]').setInputFiles({name:'room.png', mimeType:'image/png', buffer:png});
   await photoForm.getByRole('button', {name:'Lưu ảnh phòng'}).click();
   await owner.getByRole('img', {name:`Ảnh phòng ${name}`}).waitFor();
@@ -241,6 +290,107 @@ async function checkPropertyWorkspace(owner, tenant) {
   await owner.locator('#room-profile').getByText('1.200.000 ₫', {exact:true}).waitFor();
   console.log('PASS Playwright: preview a dated policy batch, exclude the occupied room, and inherit prices on move-in');
 
+  const protectedRoom = await owner.request.post(app + '/action/room-delete', {
+    headers:{Origin:app}, form:{csrf, period, id:new URL(roomURL).pathname.split('/').at(-1), confirm:'yes'},
+  });
+  assert.equal(protectedRoom.status(), 422);
+  const protectedSite = await owner.request.post(app + '/action/site-delete', {
+    headers:{Origin:app}, form:{csrf, period, id:siteID, confirm:'yes'},
+  });
+  assert.equal(protectedSite.status(), 422);
+
+  await owner.goto(`${app}/?tab=rooms&period=${period}&site=${siteID}`);
+  await owner.getByRole('link', {name:`Xem chi tiết phòng ${roomName}-P03`, exact:true}).click();
+  const unusedRoomURL = owner.url();
+  await owner.getByText('Thêm ảnh phòng', {exact:true}).click();
+  const unusedPhoto = owner.locator('form[action$="/photo"]');
+  const unusedPhotoPath = await unusedPhoto.getAttribute('action');
+  await unusedPhoto.locator('input[type=file]').setInputFiles({name:'unused.png', mimeType:'image/png', buffer:png});
+  await unusedPhoto.getByRole('button', {name:'Lưu ảnh phòng'}).click();
+  assert.equal((await owner.request.get(app + unusedPhotoPath)).status(), 200);
+  await owner.locator('.property-delete summary').click();
+  const deleteRoom = owner.locator('form[action="/action/room-delete"]');
+  await deleteRoom.getByRole('checkbox').check();
+  await deleteRoom.getByRole('button', {name:'Xóa phòng', exact:true}).click();
+  await owner.getByRole('status').filter({hasText:'Đã xóa phòng'}).waitFor();
+  assert.equal((await owner.request.get(unusedRoomURL)).status(), 404);
+  assert.equal((await owner.request.get(app + unusedPhotoPath)).status(), 404);
+
+  await owner.goto(`${app}/?tab=sites&period=${period}`);
+  const emptySiteName = siteName + '-TRONG';
+  await fields(site, {name:emptySiteName, capacity:'1'});
+  await site.getByRole('button', {name:'Lưu dãy trọ'}).click();
+  await sitePanel.getByText('Chưa ghim vị trí.', {exact:false}).waitFor();
+  await sitePanel.getByRole('link', {name:'Sửa vị trí', exact:true}).click();
+  await sitePanel.getByRole('region', {name:'Bản đồ chọn vị trí dãy trọ'}).locator('img.leaflet-tile-loaded').first().waitFor();
+  await sitePanel.getByRole('link', {name:'Hủy', exact:true}).click();
+  await sitePanel.getByRole('link', {name:'Chi tiết dãy trọ', exact:true}).click();
+  await siteDetails.getByRole('link', {name:'Sửa thông tin', exact:true}).click();
+  const siteEdit = siteDetails.locator('form[action="/action/site-edit"]');
+  const updatedSiteName = emptySiteName + '-MOI';
+  await fields(siteEdit, {name:updatedSiteName, capacity:'2'});
+  await siteEdit.getByRole('button', {name:'Lưu thông tin'}).click();
+  assert.equal(await siteDetails.locator('.site-details-name').textContent(), updatedSiteName);
+  await siteDetails.getByText('0/2', {exact:true}).waitFor();
+  await siteDetails.locator('.property-delete summary').click();
+  const deleteSite = siteDetails.locator('form[action="/action/site-delete"]');
+  await deleteSite.getByRole('checkbox').check();
+  await deleteSite.getByRole('button', {name:'Xóa dãy trọ', exact:true}).click();
+  await owner.getByRole('status').filter({hasText:'Đã xóa dãy trọ'}).waitFor();
+  assert.equal(await owner.locator('article').filter({hasText:updatedSiteName}).count(), 0);
+  console.log('PASS Playwright: delete an unused room and photo, delete an empty site, protect existing history');
+
+  await owner.goto(roomURL);
+  await owner.getByRole('link', {name:'Trả phòng và tất toán', exact:true}).click();
+  const todayVN = new Intl.DateTimeFormat('sv-SE', {timeZone:'Asia/Ho_Chi_Minh', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+  assert.equal(await owner.locator('input[name="date"]').inputValue(), todayVN);
+  assert.equal(await owner.locator('input[name="date"]').getAttribute('max'), todayVN);
+  await owner.locator('input[name="date"]').fill('2026-11-15');
+  await owner.getByRole('button', {name:'Xem trước tất toán'}).click();
+  const checkout = owner.locator('form[action="/action/checkout"]');
+  await checkout.locator('textarea[name="note"]').fill('Đã kiểm tra bàn giao');
+  await checkout.getByRole('checkbox').check();
+  await checkout.getByRole('button', {name:'Xác nhận trả phòng'}).click();
+  await owner.getByRole('status').filter({hasText:'Đã trả phòng và lưu tất toán'}).waitFor();
+  await owner.getByRole('heading', {name:'Phòng đã trả và đang trống'}).waitFor();
+  assert.equal(await owner.locator('#room-residents article').count(), 0);
+  await owner.locator('#room-timeline').getByText('Trả phòng và tất toán', {exact:true}).waitFor();
+  await owner.goto(`${app}/?tab=rooms&period=${period}&site=${siteID}`);
+  assert.equal(await roomCard.getAttribute('data-room-state'), 'vacant');
+  assert.equal(await roomCard.locator('.person-avatar').count(), 0);
+  await owner.goto(`${app}/?tab=rooms&period=2026-12&site=${siteID}`);
+  assert.equal(await roomCard.getAttribute('data-room-state'), 'vacant');
+  await sidebar.getByRole('link', {name:'Cấu hình', exact:true}).click();
+  await owner.getByRole('heading', {name:'Email xác minh qua SMTP'}).waitFor();
+  await owner.getByText('Chưa bật', {exact:true}).waitFor();
+  const smtpForm = owner.locator('form[action="/action/smtp-save"]');
+  const smtpSecret = 'only-for-isolated-browser-test';
+  await fields(smtpForm, {host:'smtp.example.test', port:'587', sender:'sender@example.test', username:'smtp-user', password:smtpSecret});
+  await smtpForm.locator('[name=mode]').selectOption('starttls');
+  await smtpForm.getByRole('button', {name:'Lưu và bật SMTP'}).click();
+  await owner.getByRole('status').filter({hasText:'Đã lưu SMTP'}).waitFor();
+  await owner.reload();
+  assert.equal(await smtpForm.locator('[name=host]').inputValue(), 'smtp.example.test');
+  assert.equal(await smtpForm.locator('[name=password]').inputValue(), '');
+  assert.ok(!(await owner.content()).includes(smtpSecret));
+  const secondary = JSON.parse(process.env.ZS_STAFF_ACCOUNTS || '[]').find(account => account.Username === 'owner-secondary');
+  if (secondary) {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      await page.request.post(`${app}/login`, {headers:{Origin:app}, form:{account:secondary.Username,password:secondary.Password}});
+      await page.goto(`${app}/?tab=settings`);
+      await page.getByText('Đã bật', {exact:true}).waitFor();
+      assert.equal(await page.locator('#smtp input').count(), 0);
+      assert.ok(!(await page.content()).includes('smtp.example.test'));
+      const secondaryCSRF = await page.locator('input[name=csrf]').first().inputValue();
+      assert.equal((await page.request.post(`${app}/action/smtp-disable`, {headers:{Origin:app}, form:{csrf:secondaryCSRF}})).status(), 403);
+    } finally { await context.close(); }
+  }
+  await owner.getByRole('button', {name:'Tắt SMTP', exact:true}).click();
+  await owner.getByText('Chưa bật', {exact:true}).waitFor();
+  console.log('PASS Playwright: immediate vacancy, saved history and global SMTP administration');
+
   await owner.setViewportSize({width:320, height:820});
   await header.getByRole('button', {name:'Thu gọn thanh bên'}).waitFor({state:'hidden'});
   const mobileMenu = owner.locator('.workspace-sidebar-mobile');
@@ -266,6 +416,8 @@ async function run() {
     await owner.goto(app + '/login');
     assert.equal(await owner.locator('datalist').count(), 0);
     const loginProfile = owner.getByRole('combobox', {name:'Tài khoản', exact:true});
+    assert.equal(await loginProfile.evaluate(el => getComputedStyle(el).appearance), 'none');
+    assert.equal(await owner.locator('.field-select .lucide-chevron-down').count(), 1);
     await loginProfile.selectOption('other');
     await owner.getByRole('textbox', {name:'Tên đăng nhập'}).waitFor();
     await loginProfile.selectOption('meter');
@@ -291,9 +443,14 @@ async function run() {
       await search.clear();
       assert.ok((await demoRooms.filter({hasText:'P04'}).textContent()).includes('18 tháng'));
       await owner.getByRole('link', {name:'Xem chi tiết phòng HD-MAU-2026-11-P05', exact:true}).click();
-      await owner.getByText('Từ 2026-05 đến hết 2026-10', {exact:true}).waitFor();
       await owner.getByText('Từ 2026-11 đến hết 2027-10', {exact:true}).waitFor();
+      assert.equal(await owner.locator('#room-contracts article').count(), 1);
+      await owner.getByRole('link', {name:'Xem tất cả hợp đồng'}).click();
+      await owner.getByText('Từ 2026-05 đến hết 2026-10', {exact:true}).waitFor();
       await owner.getByText('Khách thuê mẫu 05 · Ký lại', {exact:true}).waitFor();
+      await owner.locator('[name="archivePeriod"]').fill('2026-05');
+      await owner.getByRole('button', {name:'Lọc lịch sử'}).click();
+      assert.equal(await owner.locator('#room-contracts article').count(), 1);
       await owner.goto(`${app}/?tab=rooms&period=${period}`);
       console.log('PASS Playwright: six stable contract fixtures, eighteen-month term and renewal history');
     }
@@ -458,7 +615,7 @@ async function run() {
     assert.equal((await invalidRefund).status(), 422);
     console.log('PASS Playwright: expense, deposit, refund, balances, private receipt and CSV, refund guard');
     await checkRoomOnboarding(browser, owner, tenant);
-    await checkPropertyWorkspace(owner, tenant);
+    await checkPropertyWorkspace(browser, owner, tenant);
   } finally {
     await browser.close();
   }

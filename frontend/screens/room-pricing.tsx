@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FieldInput } from './components';
+import { FieldSelect, FieldInput } from './components';
 import type { PageData } from './view';
 
 export function RoomPricing({
@@ -19,7 +19,7 @@ export function RoomPricing({
       {canChoosePolicy && (
         <label>
           Mẫu giá và phí
-          <select
+          <FieldSelect
             name="policy"
             value={selected}
             onChange={(event) => setSelected(event.currentTarget.value)}
@@ -30,7 +30,7 @@ export function RoomPricing({
                 {policy.Name}
               </option>
             ))}
-          </select>
+          </FieldSelect>
         </label>
       )}
       <div className="form" hidden={usePolicy}>

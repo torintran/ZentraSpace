@@ -1,4 +1,11 @@
-import { Action, ActionLink, FieldArea, Panel, Status } from './components';
+import {
+  FieldSelect,
+  Action,
+  ActionLink,
+  FieldArea,
+  Panel,
+  Status,
+} from './components';
 import { has, until } from './view';
 import type { PageData } from './view';
 import { RoomForm } from './common';
@@ -29,6 +36,38 @@ export function RoomsPanel({ page }: { page: PageData }) {
         </>
       ) : (
         <>
+          <Panel className="card room-expiry" as="section">
+            <h2>Hợp đồng sắp hết hạn</h2>
+            <p className="subtle">Hợp đồng kết thúc trong 60 ngày tới.</p>
+            {page.ExpiringLeases?.length ? (
+              page.ExpiringLeases.map((lease) => (
+                <div className="list-row" key={lease.RoomID}>
+                  <div>
+                    <strong>{lease.RoomName}</strong>
+                    <p>
+                      {lease.Tenant} · Hết hạn{' '}
+                      <time dateTime={lease.EndsOn}>{lease.EndsOn}</time>
+                    </p>
+                  </div>
+                  <ActionLink
+                    className="secondary"
+                    href={
+                      '/rooms/' +
+                      lease.RoomID +
+                      '?period=' +
+                      lease.EndsOn.slice(0, 7) +
+                      '&contract=1&renew=' +
+                      lease.NextPeriod
+                    }
+                  >
+                    Ký lại
+                  </ActionLink>
+                </div>
+              ))
+            ) : (
+              <p className="subtle">Chưa có hợp đồng sắp hết hạn.</p>
+            )}
+          </Panel>
           <Panel className="card" as="section">
             <div className="room-toolbar">
               <h2>Danh sách phòng</h2>
@@ -42,14 +81,14 @@ export function RoomsPanel({ page }: { page: PageData }) {
                 <input type="hidden" name="period" value={page.Period} />
                 <label>
                   Dãy trọ
-                  <select name="site" defaultValue={page.SelectedSite}>
+                  <FieldSelect name="site" defaultValue={page.SelectedSite}>
                     <option value="">Tất cả dãy</option>
                     {page.Sites.map((site) => (
                       <option key={site.ID} value={site.ID}>
                         {site.Name}
                       </option>
                     ))}
-                  </select>
+                  </FieldSelect>
                 </label>
                 <Action className="secondary">Xem phòng theo dãy</Action>
               </form>

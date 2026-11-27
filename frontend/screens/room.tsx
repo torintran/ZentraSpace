@@ -5,16 +5,26 @@ import {
   ReceiptText,
   UserRoundPlus,
 } from 'lucide-react';
-import { Action, ActionLink, FieldInput, Panel } from './components';
+import {
+  FieldSelect,
+  Action,
+  ActionLink,
+  FieldInput,
+  Panel,
+} from './components';
 import { activeAt, has, itemKey, money, randomKey, until } from './view';
 import type { PageData } from './view';
 import { RoomForm } from './common';
 import { RoomContracts } from './room-contracts';
 import { RoomPhoto, RoomResidents, RoomTimeline } from './room-records';
+import { PropertyDelete } from './property-delete';
+import { RoomCheckout } from './room-checkout';
+import { RoomArchive } from './room-archive';
 
 export function RoomScreen({ page }: { page: PageData }) {
   const room = page.RoomDetail;
   if (!room) return null;
+  if (page.RoomArchive) return <RoomArchive page={page} />;
   const occupied = activeAt(page.Lease, page.Period);
   return (
     <>
@@ -26,16 +36,13 @@ export function RoomScreen({ page }: { page: PageData }) {
           {has(page.RoomForm) ? (
             <>Sửa phòng </>
           ) : has(page.LeaseForm) ? (
-            <>
-              {page.LeaseHistory?.length
-                ? 'Hợp đồng mới'
-                : 'Tiếp nhận người thuê'}{' '}
-              ·{' '}
-            </>
+            <>{page.LeaseCount ? 'Hợp đồng mới' : 'Tiếp nhận người thuê'} · </>
           ) : null}
           {room.Name}
         </h1>
-        {has(!has(page.RoomForm) && !has(page.LeaseForm)) ? (
+        {has(
+          !has(page.RoomForm) && !has(page.LeaseForm) && !page.CheckoutForm,
+        ) ? (
           <>
             <ActionLink
               className="button"
@@ -46,7 +53,9 @@ export function RoomScreen({ page }: { page: PageData }) {
           </>
         ) : null}
       </div>
-      {has(page.RoomForm) ? (
+      {page.CheckoutForm ? (
+        <RoomCheckout page={page} roomID={room.ID} />
+      ) : has(page.RoomForm) ? (
         <>
           <Panel className="card room-form" as="section">
             {has(page.LockRates) ? (
@@ -82,13 +91,15 @@ export function RoomScreen({ page }: { page: PageData }) {
                 <FieldInput
                   name="effective"
                   type="month"
-                  min={room.Start}
+                  min={page.NextLeasePeriod || room.Start}
                   defaultValue={
-                    occupied
+                    page.RenewPeriod ||
+                    page.NextLeasePeriod ||
+                    (occupied
                       ? undefined
                       : page.Period < room.Start
                         ? room.Start
-                        : page.Period
+                        : page.Period)
                   }
                   required
                 />
@@ -103,10 +114,15 @@ export function RoomScreen({ page }: { page: PageData }) {
                   max="120"
                 />
               </label>
-              {!!page.LeaseHistory?.length && (
+              {page.LeaseCount > 0 && (
                 <label className="check">
-                  <input type="checkbox" name="renewal" value="yes" /> Ký lại
-                  hợp đồng hiện có
+                  <input
+                    type="checkbox"
+                    name="renewal"
+                    value="yes"
+                    defaultChecked={!!page.RenewPeriod}
+                  />{' '}
+                  Ký lại hợp đồng hiện có
                 </label>
               )}
               <label>
@@ -130,7 +146,11 @@ export function RoomScreen({ page }: { page: PageData }) {
                 </label>
                 <label>
                   Ngày ký (không bắt buộc)
-                  <FieldInput type="date" name="signedOn" />
+                  <FieldInput
+                    type="date"
+                    name="signedOn"
+                    defaultValue={page.Today}
+                  />
                 </label>
               </div>
               <div className="lease-pricing form">
@@ -208,15 +228,20 @@ export function RoomScreen({ page }: { page: PageData }) {
               <ClipboardList size={18} aria-hidden /> Hợp đồng
             </a>
             <a href="#room-residents">Người ở</a>
-            <a href="#room-timeline">Lịch sử phòng</a>
+            <a href="#room-timeline">Hoạt động trong kỳ</a>
           </nav>
           {!occupied && (
-            <Panel className="card room-vacancy">
+            <Panel className="card room-vacancy" id="room-vacancy">
               <div>
-                <h2>Phòng trống trong kỳ {page.Period}</h2>
+                <h2>
+                  {page.NextLeasePeriod
+                    ? 'Phòng đã trả và đang trống'
+                    : `Phòng trống trong kỳ ${page.Period}`}
+                </h2>
                 <p>
-                  Thiết lập các khoản phí trước. Khi có khách, thêm hợp đồng để
-                  đưa phòng vào kỳ thu.
+                  {page.NextLeasePeriod
+                    ? `Bạn có thể tiếp nhận người thuê mới từ kỳ ${page.NextLeasePeriod}.`
+                    : 'Thiết lập các khoản phí trước. Khi có khách, thêm hợp đồng để đưa phòng vào kỳ thu.'}
                 </p>
               </div>
               <ActionLink
@@ -454,10 +479,10 @@ export function RoomScreen({ page }: { page: PageData }) {
                 <div className="pair">
                   <label>
                     Chu kỳ thu
-                    <select name="kind">
+                    <FieldSelect name="kind">
                       <option value="monthly">Hằng tháng</option>
                       <option value="once">Một lần</option>
-                    </select>
+                    </FieldSelect>
                   </label>
                   <label>
                     Kỳ bắt đầu
@@ -477,6 +502,14 @@ export function RoomScreen({ page }: { page: PageData }) {
           <RoomContracts page={page} roomId={room.ID} />
           <RoomResidents page={page} roomID={room.ID} occupied={occupied} />
           <RoomTimeline page={page} />
+          <PropertyDelete
+            page={page}
+            kind="room"
+            id={room.ID}
+            name={room.Name}
+            revision={room.Revision}
+            reason={page.RoomDeleteReason}
+          />
         </>
       )}
     </>

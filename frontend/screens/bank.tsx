@@ -1,5 +1,12 @@
 import { Fragment } from 'react';
-import { Action, ActionLink, FieldArea, FieldInput, Panel } from './components';
+import {
+  FieldSelect,
+  Action,
+  ActionLink,
+  FieldArea,
+  FieldInput,
+  Panel,
+} from './components';
 import { configured, has, itemKey, money, suffix } from './view';
 import type { PageData, Invoice } from './view';
 
@@ -131,7 +138,7 @@ export function BankScreen({ page }: { page: PageData }) {
               <input type="hidden" name="csrf" value={page.CSRF} />
               <label>
                 Ngân hàng
-                <select
+                <FieldSelect
                   name="bank"
                   required
                   defaultValue={bank.BankName ? bank.Account.BIN : ''}
@@ -142,7 +149,7 @@ export function BankScreen({ page }: { page: PageData }) {
                       {bank.Name}
                     </option>
                   ))}
-                </select>
+                </FieldSelect>
               </label>
               <label>
                 Số tài khoản nhận

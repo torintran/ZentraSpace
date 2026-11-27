@@ -1,5 +1,11 @@
 import { Fragment } from 'react';
-import { Action, ActionLink, FieldArea, FieldInput } from './components';
+import {
+  FieldSelect,
+  Action,
+  ActionLink,
+  FieldArea,
+  FieldInput,
+} from './components';
 import { RoomPricing } from './room-pricing';
 import { has, itemKey, money, usage } from './view';
 import type { PageData, Invoice } from './view';
@@ -74,7 +80,7 @@ export function RoomForm({ page }: { page: PageData }) {
         {!!page.Sites?.length && (
           <label>
             Dãy trọ
-            <select
+            <FieldSelect
               name="site"
               defaultValue={page.RoomDetail?.SiteID || page.SelectedSite || ''}
             >
@@ -84,7 +90,7 @@ export function RoomForm({ page }: { page: PageData }) {
                   {site.Name}
                 </option>
               ))}
-            </select>
+            </FieldSelect>
           </label>
         )}
         <label>

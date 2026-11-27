@@ -12,6 +12,23 @@ type RoomView struct {
 	HasPhoto   bool
 }
 type Page struct {
+	EditSiteLocation                                                          bool
+	ShowSiteDetails                                                           bool
+	EditSiteDetails                                                           bool
+	SiteRevision                                                              string
+	CheckoutForm                                                              bool
+	CheckoutDate, CheckoutError                                               string
+	Today, PeriodDate, PeriodEnd, NextLeasePeriod                             string
+	SMTP                                                                      SMTPSettings
+	RoomArchive                                                               bool
+	ArchiveKind, ArchivePeriod                                                string
+	ArchivePage, ArchivePages, LeaseCount                                     int
+	CheckoutQuote                                                             *CheckoutQuote
+	ExpiringLeases                                                            []ExpiringLease
+	RenewPeriod                                                               string
+	LeaseEmails                                                               map[string]string
+	VerificationEmail, CodeDelivery                                           string
+	RoomDeleteReason                                                          string
 	PolicyPreview                                                             *PolicyPreview
 	RoomPolicyFee                                                             FeeLine
 	RoomHasScheduledPolicy                                                    bool

@@ -1,13 +1,17 @@
 package app
 
-import "sort"
+import (
+	"slices"
+	"sort"
+	"strings"
+)
 
 type RoomEvent struct {
 	Date, Kind, Title, Detail, InvoiceID string
 	Amount                               int64
 }
 
-func (b *Book) roomTimeline(room Room) []RoomEvent {
+func (b *Book) roomTimeline(room Room, period, kind string) []RoomEvent {
 	events := []RoomEvent{{Date: room.Start, Kind: "room", Title: "Bắt đầu quản lý phòng"}}
 	for _, assignment := range b.PolicyAssignments {
 		if assignment.RoomID == room.ID {
@@ -16,6 +20,11 @@ func (b *Book) roomTimeline(room Room) []RoomEvent {
 	}
 	for _, terms := range b.leaseHistory(room) {
 		events = append(events, RoomEvent{Date: terms.Effective, Kind: "lease", Title: "Hợp đồng có hiệu lực", Detail: terms.Tenant})
+	}
+	for _, c := range b.Checkouts {
+		if c.RoomID == room.ID {
+			events = append(events, RoomEvent{Date: c.Date, Kind: "checkout", Title: "Trả phòng và tất toán", Detail: c.Note})
+		}
 	}
 	for _, resident := range b.Residents {
 		if resident.RoomID != room.ID {
@@ -48,6 +57,9 @@ func (b *Book) roomTimeline(room Room) []RoomEvent {
 			events = append(events, RoomEvent{Date: entry.Date, Kind: "deposit", Title: entry.KindLabel(), Detail: entry.Note, Amount: entry.Amount})
 		}
 	}
+	events = slices.DeleteFunc(events, func(event RoomEvent) bool {
+		return (period != "" && !strings.HasPrefix(event.Date, period)) || (kind != "" && event.Kind != kind)
+	})
 	sort.SliceStable(events, func(i, j int) bool { return events[i].Date > events[j].Date })
 	return events
 }

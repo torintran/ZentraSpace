@@ -65,7 +65,7 @@ func (b *Book) dashboard(period string) Dashboard {
 		if index, ok := months[invoice.Period]; ok && invoice.Issued {
 			m := &d.Trend[index]
 			m.Issued++
-			m.Collected += invoice.NetCollected()
+			m.Collected += invoice.cashCollected()
 			m.Due += invoice.Remaining()
 		}
 	}

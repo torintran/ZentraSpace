@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"time"
 )
 
 func (a *App) home(w http.ResponseWriter, r *http.Request) {
@@ -10,7 +11,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tab := r.URL.Query().Get("tab")
-	if tab != "rooms" && tab != "meters" && tab != "billing" && tab != "dashboard" && tab != "sites" && tab != "policies" {
+	if tab != "rooms" && tab != "meters" && tab != "billing" && tab != "dashboard" && tab != "sites" && tab != "policies" && tab != "settings" {
 		tab = "dashboard"
 	}
 	if s.role == "meter" {
@@ -22,14 +23,41 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		filter = ""
 	}
 	p := Page{Screen: "home", Role: s.role, Tab: tab, Period: period, Filter: filter, CSRF: hash(id + ":csrf")}
+	if tab == "settings" {
+		settings, err := a.smtpView(r.Context(), s.platformAdmin)
+		if err != nil {
+			a.problem(w, r, err)
+			return
+		}
+		p.SMTP = settings
+		switch r.URL.Query().Get("saved") {
+		case "smtp":
+			p.Message = "Đã lưu SMTP cho toàn hệ thống."
+		case "smtp-tested":
+			p.Message = "Kết nối và xác thực SMTP thành công."
+		case "smtp-disabled":
+			p.Message = "Đã tắt gửi mã qua SMTP."
+		}
+		a.page(w, r, p)
+		return
+	}
 	p.RoomForm = tab == "rooms" && r.URL.Query().Get("add") == "1"
-	if tab == "rooms" {
+	if tab == "rooms" || tab == "sites" {
 		p.SelectedSite = r.URL.Query().Get("site")
 	}
+	p.EditSiteLocation = tab == "sites" && r.URL.Query().Get("location") == "edit"
+	p.ShowSiteDetails = tab == "sites" && r.URL.Query().Get("view") == "details"
+	p.EditSiteDetails = p.ShowSiteDetails && r.URL.Query().Get("edit") == "1"
 	if r.URL.Query().Get("saved") == "1" {
 		p.Message = "Đã lưu."
 	} else if tab == "policies" && r.URL.Query().Get("saved") == "policy-applied" {
 		p.Message = "Đã lên lịch áp dụng mẫu giá và phí."
+	} else if tab == "sites" && r.URL.Query().Get("saved") == "location" {
+		p.Message = "Đã cập nhật vị trí dãy trọ."
+	} else if tab == "sites" && r.URL.Query().Get("saved") == "site-deleted" {
+		p.Message = "Đã xóa dãy trọ."
+	} else if tab == "rooms" && r.URL.Query().Get("saved") == "room-deleted" {
+		p.Message = "Đã xóa phòng."
 	}
 	if err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
 		if tab == "dashboard" {
@@ -45,7 +73,16 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		if tab == "rooms" || tab == "policies" {
 			p.Policies = b.Policies
 		}
+		if tab == "rooms" && !p.RoomForm {
+			p.ExpiringLeases = b.expiringLeases(time.Now(), p.SelectedSite)
+		}
 		if tab == "sites" || tab == "policies" {
+			for _, site := range p.Sites {
+				if site.ID == p.SelectedSite && p.EditSiteDetails {
+					p.SiteRevision = site.Revision()
+					break
+				}
+			}
 			return nil
 		}
 		for _, room := range b.Rooms {
@@ -64,8 +101,8 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			}
 			if s.role == "meter" {
 				room = Room{ID: room.ID, Name: room.Name, Start: room.Start, Electric: room.Electric, Water: room.Water}
-			} else if tab == "rooms" && room.Start <= period {
-				if lease.ActiveAt(period) {
+			} else if tab == "rooms" {
+				if lease.OccupiedIn(period) {
 					room.Tenant = lease.Tenant
 					renewed = lease.Renewal
 				} else {
@@ -74,6 +111,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			}
 			view := RoomView{Room: room, Done: done, HasLease: lease.ActiveAt(period), Renewed: renewed}
 			if tab == "rooms" {
+				view.HasLease = lease.OccupiedIn(period)
 				view.Lease = lease
 				view.People = len(b.roomResidents(room, period))
 			}

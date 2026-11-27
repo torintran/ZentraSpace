@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { Action, FieldInput, Panel, Status } from './components';
+import { FieldSelect, Action, FieldInput, Panel, Status } from './components';
 import {
   clock,
   has,
@@ -61,11 +61,11 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                 </label>
                 <label>
                   Phương thức
-                  <select name="method" required>
+                  <FieldSelect name="method" required>
                     <option value="">Chọn phương thức</option>
                     <option value="cash">Tiền mặt</option>
                     <option value="transfer">Chuyển khoản</option>
-                  </select>
+                  </FieldSelect>
                 </label>
                 <label>
                   Mã chứng từ (không bắt buộc)
@@ -85,10 +85,10 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                   <input type="hidden" name="key" value={randomKey()} />
                   <label>
                     Loại giao dịch
-                    <select name="kind">
+                    <FieldSelect name="kind">
                       <option>Giảm</option>
                       <option>Hoàn</option>
-                    </select>
+                    </FieldSelect>
                   </label>
                   <label>
                     Số tiền (đồng)
@@ -126,6 +126,49 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                 <input type="hidden" name="id" value={bill.ID} />
                 <Action className="secondary">Tạo link mới</Action>
               </form>
+              {page.VerificationEmail && (
+                <form
+                  method="post"
+                  action="/action/invite-email"
+                  className="form"
+                >
+                  <input type="hidden" name="csrf" value={page.CSRF} />
+                  <input type="hidden" name="id" value={bill.ID} />
+                  <p className="subtle">
+                    Email nhận mã: {page.VerificationEmail}
+                  </p>
+                  <Action className="secondary">
+                    Tạo link và gửi mã qua email
+                  </Action>
+                </form>
+              )}
+              {!page.SMTP.Configured ? (
+                <p className="subtle">
+                  Chưa cấu hình gửi mã qua email.{' '}
+                  <a href="/?tab=settings#smtp">Xem cấu hình SMTP</a>
+                </p>
+              ) : (
+                !page.VerificationEmail && (
+                  <p className="subtle">
+                    Chưa có email nhận mã.{' '}
+                    <a
+                      href={
+                        '/rooms/' +
+                        bill.RoomID +
+                        '?period=' +
+                        bill.Period +
+                        (bill.LeaseEffective
+                          ? '&history=1&kind=contracts&archivePeriod=' +
+                            bill.LeaseEffective
+                          : '') +
+                        '#room-contracts'
+                      }
+                    >
+                      Mở hồ sơ hợp đồng
+                    </a>
+                  </p>
+                )
+              )}
               {has(page.Invites)
                 ? page.Invites.map((invite, index) => (
                     <Fragment key={itemKey(invite, index)}>

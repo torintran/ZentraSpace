@@ -9,6 +9,7 @@
   --tint: #e6f2e7;
   --focus: #875010;
   --radius: 20px;
+  --control-height: 46px;
 }
 [hidden] {
   display: none !important;
@@ -67,7 +68,7 @@ button,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
+  min-height: var(--control-height);
   max-width: 100%;
   padding: 10px 16px;
   border: 1px solid var(--primary);
@@ -82,6 +83,10 @@ button,
 button:hover,
 .button:hover {
   filter: brightness(0.92);
+}
+.mantine-Button-root {
+  min-height: var(--control-height);
+  max-width: 100%;
 }
 .secondary {
   background: #fff;
@@ -195,6 +200,7 @@ p {
 }
 .actions {
   margin: 15px 0;
+  align-items: center;
 }
 .tabs {
   display: flex;
@@ -259,7 +265,7 @@ label {
 input,
 select,
 textarea {
-  min-height: 46px;
+  min-height: var(--control-height);
   padding: 8px 10px;
   width: 100%;
   min-width: 0;
@@ -1066,4 +1072,137 @@ main.layout {
 }
 .lease-pricing:has([name='useScheduledPrice']:checked) .lease-manual-pricing {
   display: none;
+}
+.field-select {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+.field-select select {
+  appearance: none;
+  padding-inline-end: 42px;
+}
+.field-select-icon {
+  position: absolute;
+  inset-inline-end: 14px;
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  color: var(--primary);
+  pointer-events: none;
+}
+.field-select select:focus-visible {
+  border-color: var(--primary);
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.site-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr);
+}
+.room-expiry {
+  margin-block-end: 16px;
+}
+.card > .room-toolbar {
+  margin-block-end: 12px;
+}
+.site-workspace [id^='site-'][class~='card'] {
+  scroll-margin-block-start: 16px;
+}
+.site-list-item {
+  display: grid;
+  justify-content: stretch;
+}
+.site-name {
+  font-weight: 750;
+  text-underline-offset: 3px;
+}
+.site-list-item .actions {
+  margin: 0;
+}
+.site-list-item .actions a[aria-current='location'] {
+  background: var(--tint);
+  border-color: var(--primary);
+}
+.site-details-name {
+  font-weight: 750;
+  font-size: 1.16rem;
+  overflow-wrap: anywhere;
+}
+.site-details-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(115px, 100%), 1fr));
+  gap: 8px;
+  margin-block: 16px;
+}
+.site-details-stats > div {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.site-details-stats dt {
+  color: var(--muted);
+}
+.site-details-stats dd {
+  margin: 2px 0 0;
+  font-size: 1.25rem;
+  font-weight: 750;
+}
+.site-details-management {
+  border-top: 1px solid var(--line);
+  padding-block-start: 16px;
+}
+.site-details-management .property-delete {
+  margin-block-start: 0;
+}
+@media (max-width: 780px) {
+  .site-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.property-delete {
+  margin-block-start: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+.property-delete summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  cursor: pointer;
+  color: #8d2626;
+  font-weight: 700;
+}
+.property-delete .property-delete-submit {
+  --button-bg: #a12626;
+  --button-hover: #851e1e;
+}
+.site-location-picker > summary svg {
+  vertical-align: text-bottom;
+  margin-inline-end: 6px;
+}
+.site-map,
+.site-map-canvas {
+  min-width: 0;
+}
+.site-map-canvas {
+  height: 290px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  isolation: isolate;
+  z-index: 0;
+}
+.site-map-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-end: 8px;
+}
+.site-map-zoom {
+  min-width: 44px;
+  padding-inline: 8px;
 }

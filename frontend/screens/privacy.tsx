@@ -29,6 +29,13 @@ export function PrivacyScreen({ page }: { page: PageData }) {
           Sổ nghiệp vụ được mã hóa trước khi lưu vào cơ sở dữ liệu. Người vận
           hành quản lý bản sao lưu và thời gian lưu giữ.
         </p>
+        <h2>Bản đồ và vị trí thiết bị</h2>
+        <p>
+          Khi xem hoặc chọn vị trí, trình duyệt tải các ô bản đồ của khu vực
+          đang xem từ OpenStreetMap. Trình duyệt chỉ yêu cầu vị trí thiết bị khi
+          bạn bấm Dùng vị trí hiện tại. ZentraSpace lưu điểm đã chọn khi bạn lưu
+          dãy trọ.
+        </p>
         <h2>Yêu cầu về dữ liệu</h2>
         <p>
           Liên hệ chủ trọ hoặc đơn vị vận hành đã gửi bảng kê để yêu cầu kiểm

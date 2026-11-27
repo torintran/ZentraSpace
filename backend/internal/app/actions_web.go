@@ -29,6 +29,22 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	period := periodOf(r.Form.Get("period"))
+	if action == "room-delete" {
+		a.deleteRoom(w, r, s.organization, period)
+		return
+	}
+	if action == "invite-email" {
+		a.sendInviteCode(w, r, s.organization, hash(sessionID+":csrf"))
+		return
+	}
+	if action == "smtp-save" || action == "smtp-test" || action == "smtp-disable" {
+		if !s.platformAdmin {
+			http.Error(w, "Chỉ quản trị hệ thống được thay đổi SMTP.", http.StatusForbidden)
+			return
+		}
+		a.updateSMTP(w, r, action)
+		return
+	}
 	next := "/?tab=billing&saved=1&period=" + period
 	p := Page{Screen: "invite", Role: s.role, CSRF: hash(sessionID + ":csrf")}
 	if action == "policy-preview" {
@@ -76,10 +92,36 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return err
 			}
-			if err := b.addSite(Site{Name: value("name"), Address: value("address"), Coordinates: value("coordinates"), Capacity: int(capacity)}); err != nil {
+			siteID, err := b.addSite(Site{Name: value("name"), Address: value("address"), Coordinates: value("coordinates"), Capacity: int(capacity)})
+			if err != nil {
 				return inputError{err}
 			}
-			next = "/?tab=sites&saved=1&period=" + period
+			next = "/?tab=sites&saved=1&period=" + period + "&site=" + url.QueryEscape(siteID) + "#site-map-panel"
+		case "site-location":
+			if err := b.updateSiteLocation(id, value("address"), value("coordinates")); err != nil {
+				return inputError{err}
+			}
+			next = "/?tab=sites&saved=location&period=" + period + "&site=" + url.QueryEscape(id) + "#site-map-panel"
+		case "site-edit":
+			capacity, err := number(r, "capacity", 1, 150)
+			if err != nil {
+				return err
+			}
+			if err := b.updateSite(id, value("revision"), value("name"), int(capacity)); err != nil {
+				return inputError{err}
+			}
+			next = "/?tab=sites&saved=1&period=" + period + "&site=" + url.QueryEscape(id) + "&view=details#site-details-panel"
+		case "site-delete":
+			if value("confirm") != "yes" {
+				return inputError{errors.New("Hãy xác nhận xóa dãy trọ.")}
+			}
+			if err := b.deleteSite(id); err != nil {
+				if errors.Is(err, errMissing) {
+					return err
+				}
+				return inputError{err}
+			}
+			next = "/?tab=sites&saved=site-deleted&period=" + period
 		case "policy":
 			rent, e1 := number(r, "rent", 0, 100000000)
 			electric, e2 := number(r, "electricRate", 0, 100000)
@@ -120,6 +162,9 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			entry := CashEntry{Key: value("key"), Kind: value("kind"), Date: value("date"),
 				RoomID: value("room"), Category: value("category"), Reference: value("reference"),
 				Note: value("note"), Amount: amount}
+			if entry.Kind == depositApplied {
+				return errInvalid
+			}
 			if err := b.postCash(entry); err != nil {
 				return inputError{err}
 			}
@@ -179,6 +224,26 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{err}
 			}
 			next = "/rooms/" + id + "?saved=lease&period=" + terms.Effective
+		case "checkout":
+			applied, e1 := number(r, "applied", 0, 100000000000)
+			refunded, e2 := number(r, "refunded", 0, 100000000000)
+			if e1 != nil || e2 != nil || value("confirm") != "yes" {
+				return errInvalid
+			}
+			c := Checkout{RoomID: id, Effective: value("effective"), Date: value("date"), Revision: value("revision"), Note: value("note"), Applied: applied, Refunded: refunded}
+			if err := b.closeCheckout(c, time.Now()); err != nil {
+				return inputError{err}
+			}
+			next = "/rooms/" + id + "?saved=checkout&period=" + c.Date[:7] + "#room-vacancy"
+		case "lease-email":
+			if err := b.updateLeaseEmail(id, value("effective"), value("email")); err != nil {
+				return inputError{err}
+			}
+			next = "/rooms/" + id + "?saved=lease-email&period=" + period
+			if value("archive") == "1" {
+				next += "&history=1&kind=contracts&archivePeriod=" + url.QueryEscape(value("effective"))
+			}
+			next += "#room-contracts"
 		case "import":
 			if _, err := b.importRooms(period, r.Form.Get("csv"), true); err != nil {
 				return inputError{err}

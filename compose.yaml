@@ -45,6 +45,10 @@ services:
       ZS_LOCAL_HTTP: ${ZS_LOCAL_HTTP:-1}
       ZS_ORIGIN: ${ZS_ORIGIN:-http://localhost:8087}
       ZS_FRONTEND_URL: http://frontend:3000
+      ZS_SMTP_ADDRESS: ${ZS_SMTP_ADDRESS:-}
+      ZS_SMTP_FROM: ${ZS_SMTP_FROM:-}
+      ZS_SMTP_USERNAME: ${ZS_SMTP_USERNAME:-}
+      ZS_SMTP_PASSWORD: ${ZS_SMTP_PASSWORD:-}
     networks: [default, rendering]
     ports:
       - "127.0.0.1:${ZS_PORT:-8087}:8080"

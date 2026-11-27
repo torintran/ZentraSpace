@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   MapPin,
   Menu,
+  Settings,
   Tags,
   Wallet,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ const navigation = [
   { tab: 'billing', label: 'Chốt kỳ thu', Icon: ClipboardList },
   { tab: 'bank', label: 'Đối soát ngân hàng', Icon: Landmark },
   { tab: 'cash', label: 'Thu chi và cọc', Icon: Wallet },
+  { tab: 'settings', label: 'Cấu hình', Icon: Settings },
 ] as const;
 
 function WorkspaceLinks({ page }: { page: PageData }) {

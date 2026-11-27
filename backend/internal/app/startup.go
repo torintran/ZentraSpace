@@ -68,6 +68,11 @@ func Run() {
 		log.Fatal(err)
 	}
 	a := &App{store: store, origin: origin, secure: !local, sessions: map[string]session{}, limits: map[string]limiter{}, accounts: accounts}
+	mailer, err := configuredVerificationSMTP()
+	if err != nil {
+		log.Fatal(err)
+	}
+	a.smtpFallback = mailer
 	if local {
 		a.mockBankSecret = os.Getenv("ZS_MOCK_BANK_SECRET")
 	}

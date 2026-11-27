@@ -1,5 +1,5 @@
 import { CalendarClock, UserRound } from 'lucide-react';
-import { Action, FieldInput, Panel } from './components';
+import { Action, ActionLink, FieldInput, Panel } from './components';
 import { money } from './view';
 import type { PageData } from './view';
 
@@ -112,6 +112,11 @@ export function RoomResidents({
                     name="leftOn"
                     type="date"
                     min={person.JoinedOn}
+                    defaultValue={
+                      page.PeriodDate >= person.JoinedOn
+                        ? page.PeriodDate
+                        : person.JoinedOn
+                    }
                     required
                   />
                 </label>
@@ -142,7 +147,8 @@ export function RoomResidents({
                 name="joinedOn"
                 type="date"
                 min={page.Period + '-01'}
-                defaultValue={page.Period + '-01'}
+                max={page.PeriodEnd}
+                defaultValue={page.PeriodDate}
                 required
               />
             </label>
@@ -159,8 +165,10 @@ export function RoomTimeline({ page }: { page: PageData }) {
   return (
     <Panel className="card history" id="room-timeline">
       <h2>
-        <CalendarClock size={20} aria-hidden /> Lịch sử phòng
+        <CalendarClock size={20} aria-hidden />{' '}
+        {page.RoomArchive ? 'Nhật ký phòng' : 'Hoạt động trong kỳ'}
       </h2>
+      {!events.length && <p className="subtle">Chưa có hoạt động phù hợp.</p>}
       <ol className="room-timeline">
         {events.map((event, index) => (
           <li key={index}>
@@ -178,6 +186,20 @@ export function RoomTimeline({ page }: { page: PageData }) {
           </li>
         ))}
       </ol>
+      {!page.RoomArchive && (
+        <ActionLink
+          className="secondary"
+          href={
+            '/rooms/' +
+            page.RoomDetail?.ID +
+            '?period=' +
+            page.Period +
+            '&history=1'
+          }
+        >
+          Mở lịch sử phòng
+        </ActionLink>
+      )}
     </Panel>
   );
 }

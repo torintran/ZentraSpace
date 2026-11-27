@@ -41,27 +41,84 @@ func (s Site) mapURL() string {
 	return "https://www.openstreetmap.org/search?query=" + url.QueryEscape(s.Address)
 }
 
-func (b *Book) addSite(site Site) error {
+func (b *Book) addSite(site Site) (string, error) {
 	if site.Name == "" || len(site.Name) > 120 || len(site.Address) > 360 || site.Capacity < 1 || site.Capacity > 150 || len(b.Sites) >= 100 {
-		return errInvalid
+		return "", errInvalid
 	}
-	if site.Coordinates != "" {
-		parts := strings.Split(site.Coordinates, ",")
-		if len(parts) != 2 {
-			return errors.New("Nhập tọa độ theo dạng vĩ độ, kinh độ.")
-		}
-		lat, errLat := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
-		lng, errLng := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
-		if errLat != nil || errLng != nil || math.IsNaN(lat) || math.IsNaN(lng) || math.Abs(lat) > 90 || math.Abs(lng) > 180 {
-			return errors.New("Tọa độ chưa hợp lệ.")
-		}
-		site.Coordinates = strconv.FormatFloat(lat, 'f', 6, 64) + "," + strconv.FormatFloat(lng, 'f', 6, 64)
+	coordinates, err := normalizeCoordinates(site.Coordinates)
+	if err != nil {
+		return "", err
 	}
 	if slices.ContainsFunc(b.Sites, func(existing Site) bool { return strings.EqualFold(existing.Name, site.Name) }) {
-		return errors.New("Tên dãy trọ đã tồn tại.")
+		return "", errors.New("Tên dãy trọ đã tồn tại.")
 	}
 	site.ID = token()
+	site.Coordinates = coordinates
 	b.Sites = append(b.Sites, site)
+	return site.ID, nil
+}
+
+func normalizeCoordinates(value string) (string, error) {
+	if value == "" {
+		return "", nil
+	}
+	parts := strings.Split(value, ",")
+	if len(parts) != 2 {
+		return "", errors.New("Nhập tọa độ theo dạng vĩ độ, kinh độ.")
+	}
+	lat, errLat := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+	lng, errLng := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+	if errLat != nil || errLng != nil || math.IsNaN(lat) || math.IsNaN(lng) || math.Abs(lat) > 90 || math.Abs(lng) > 180 {
+		return "", errors.New("Tọa độ chưa hợp lệ.")
+	}
+	return strconv.FormatFloat(lat, 'f', 6, 64) + "," + strconv.FormatFloat(lng, 'f', 6, 64), nil
+}
+
+func (b *Book) updateSiteLocation(id, address, value string) error {
+	index := slices.IndexFunc(b.Sites, func(site Site) bool { return site.ID == id })
+	if index < 0 {
+		return errMissing
+	}
+	if len(address) > 360 {
+		return errInvalid
+	}
+	coordinates, err := normalizeCoordinates(value)
+	if err != nil {
+		return err
+	}
+	b.Sites[index].Address, b.Sites[index].Coordinates = address, coordinates
+	return nil
+}
+
+func (s Site) Revision() string {
+	return hash(s.Name + "\x00" + strconv.Itoa(s.Capacity))
+}
+
+func (b *Book) updateSite(id, revision, name string, capacity int) error {
+	index := slices.IndexFunc(b.Sites, func(site Site) bool { return site.ID == id })
+	if index < 0 {
+		return errMissing
+	}
+	site := &b.Sites[index]
+	if site.Revision() != revision {
+		return errors.New("Thông tin dãy đã thay đổi. Hãy mở lại trước khi lưu.")
+	}
+	if name == "" || len(name) > 120 || capacity < 1 || capacity > 150 {
+		return errInvalid
+	}
+	if slices.ContainsFunc(b.Sites, func(other Site) bool { return other.ID != id && strings.EqualFold(other.Name, name) }) {
+		return errors.New("Tên dãy trọ đã tồn tại.")
+	}
+	count := 0
+	for _, room := range b.Rooms {
+		if room.SiteID == id {
+			count++
+		}
+	}
+	if capacity < count {
+		return errors.New("Số phòng tối đa không thể nhỏ hơn số phòng đã tạo.")
+	}
+	site.Name, site.Capacity = name, capacity
 	return nil
 }
 
@@ -92,7 +149,7 @@ func (b *Book) siteViews(period string) []SiteView {
 		for _, room := range b.Rooms {
 			if room.SiteID == site.ID {
 				view.Rooms++
-				if b.leaseAt(room, period).ActiveAt(period) {
+				if b.leaseAt(room, period).OccupiedIn(period) {
 					view.Occupied++
 				}
 			}
@@ -126,7 +183,7 @@ type Resident struct {
 
 func (b *Book) addResident(room *Room, ownerPeriod string, resident Resident) error {
 	terms := b.leaseAt(*room, ownerPeriod)
-	if !terms.ActiveAt(ownerPeriod) || resident.Name == "" || len(resident.Name) > 150 || len(resident.Phone) > 30 {
+	if !terms.OccupiedIn(ownerPeriod) || resident.Name == "" || len(resident.Name) > 150 || len(resident.Phone) > 30 {
 		return errInvalid
 	}
 	joined, err := time.Parse(time.DateOnly, resident.JoinedOn)
@@ -149,7 +206,7 @@ func (b *Book) addResident(room *Room, ownerPeriod string, resident Resident) er
 
 func (b *Book) roomResidents(room Room, period string) []Resident {
 	lease := b.leaseAt(room, period)
-	if !lease.ActiveAt(period) {
+	if !lease.OccupiedIn(period) {
 		return nil
 	}
 	var residents []Resident

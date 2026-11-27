@@ -17,11 +17,19 @@ func (a *App) invoice(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bạn không có quyền xem bảng kê.", 403)
 		return
 	}
-	p := Page{Screen: "invoice", Role: s.role, CSRF: hash(id + ":csrf")}
-	err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
+	settings, err := a.smtpView(r.Context(), false)
+	if err != nil {
+		a.problem(w, r, err)
+		return
+	}
+	p := Page{Screen: "invoice", Role: s.role, CSRF: hash(id + ":csrf"), SMTP: settings}
+	err = a.store.book(r.Context(), s.organization, false, func(b *Book) error {
 		p.Invoice = b.invoice(r.PathValue("id"))
 		if p.Invoice == nil {
 			return errMissing
+		}
+		if settings.Configured && p.Invoice.Issued {
+			p.VerificationEmail = b.LeaseEmails[p.Invoice.RoomID+"/"+p.Invoice.LeaseEffective]
 		}
 		p.ReconciledEntries = make(map[string]bool)
 		for _, tr := range b.Transfers {
@@ -30,7 +38,7 @@ func (a *App) invoice(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for _, v := range b.Invites {
-			if v.InvoiceID == p.Invoice.ID && !v.Revoked && time.Now().Before(v.Expires) {
+			if v.InvoiceID == p.Invoice.ID && !v.Revoked && !v.PendingDelivery && time.Now().Before(v.Expires) {
 				p.Invites = append(p.Invites, v)
 			}
 		}

@@ -44,16 +44,18 @@ func (a *App) cash(w http.ResponseWriter, r *http.Request) {
 		a.page(w, r, page)
 		return
 	}
-	rows := [][]string{{"Ngày", "Loại", "Phòng", "Danh mục", "Mã chứng từ", "Ghi chú", "Tiền vào (VND)", "Tiền ra (VND)", "Mã bút toán"}}
+	rows := [][]string{{"Ngày", "Loại", "Phòng", "Danh mục", "Mã chứng từ", "Ghi chú", "Tiền vào (VND)", "Tiền ra (VND)", "Mã bút toán", "Cấn cọc (VND)"}}
 	for _, e := range page.Cash.Rows {
-		in, out := "", ""
-		if e.Income() {
+		in, out, applied := "", "", ""
+		if e.Kind == depositApplied {
+			applied = strconv.FormatInt(e.Amount, 10)
+		} else if e.Income() {
 			in = strconv.FormatInt(e.Amount, 10)
 		} else {
 			out = strconv.FormatInt(e.Amount, 10)
 		}
 		rows = append(rows, []string{e.Date, e.KindLabel(), plainCSV(e.RoomName), plainCSV(e.Category),
-			plainCSV(e.Reference), plainCSV(e.Note), in, out, plainCSV(e.Key)})
+			plainCSV(e.Reference), plainCSV(e.Note), in, out, plainCSV(e.Key), applied})
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", "attachment; filename=so-thu-chi-"+period+".csv")

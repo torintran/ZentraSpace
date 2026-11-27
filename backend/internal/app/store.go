@@ -136,7 +136,7 @@ func migrate(ctx context.Context) error {
  USING (organization = current_setting('app.organization', true))
  WITH CHECK (organization = current_setting('app.organization', true));
  REVOKE ALL ON room_photos FROM PUBLIC;
- GRANT SELECT, INSERT, UPDATE ON room_photos TO zentra_runtime;
+ GRANT SELECT, INSERT, UPDATE, DELETE ON room_photos TO zentra_runtime;
  CREATE TABLE IF NOT EXISTS bank_catalog (
   bin text PRIMARY KEY,
   code text NOT NULL,
@@ -186,6 +186,12 @@ func openStore(ctx context.Context) (*Store, error) {
 }
 
 func (s *Store) book(ctx context.Context, org string, write bool, fn func(*Book) error) error {
+	return s.bookTransaction(ctx, org, write, func(b *Book, _ pgx.Tx) error {
+		return fn(b)
+	})
+}
+
+func (s *Store) bookTransaction(ctx context.Context, org string, write bool, fn func(*Book, pgx.Tx) error) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -220,7 +226,7 @@ func (s *Store) book(ctx context.Context, org string, write bool, fn func(*Book)
 			return err
 		}
 	}
-	if err = fn(&book); err != nil {
+	if err = fn(&book, tx); err != nil {
 		return err
 	}
 	if write {

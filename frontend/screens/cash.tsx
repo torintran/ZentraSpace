@@ -1,5 +1,11 @@
 import { Fragment } from 'react';
-import { Action, ActionLink, FieldInput, Panel } from './components';
+import {
+  FieldSelect,
+  Action,
+  ActionLink,
+  FieldInput,
+  Panel,
+} from './components';
 import {
   canAttach,
   has,
@@ -53,6 +59,10 @@ export function CashScreen({ page }: { page: PageData }) {
             <dd>{money(page.Cash.Returned)}</dd>
           </div>
           <div>
+            <dt>Cọc đã cấn vào bảng kê</dt>
+            <dd>{money(page.Cash.Applied)}</dd>
+          </div>
+          <div>
             <dt>Cọc đang giữ cuối kỳ</dt>
             <dd>{money(page.Cash.Held)}</dd>
           </div>
@@ -72,13 +82,13 @@ export function CashScreen({ page }: { page: PageData }) {
             <input type="hidden" name="kind" value="expense" />
             <label>
               Danh mục
-              <select name="category" required>
+              <FieldSelect name="category" required>
                 <option>Bảo trì và sửa chữa</option>
                 <option>Điện nước chung</option>
                 <option>Vệ sinh</option>
                 <option>Vật tư</option>
                 <option>Khác</option>
-              </select>
+              </FieldSelect>
             </label>
             <CashFields page={page} />
             <Action>Lưu khoản chi</Action>
@@ -98,26 +108,25 @@ export function CashScreen({ page }: { page: PageData }) {
                 <input type="hidden" name="key" value={randomKey()} />
                 <label>
                   Loại giao dịch
-                  <select name="kind">
+                  <FieldSelect name="kind">
                     <option value="deposit_in">Nhận cọc</option>
                     <option value="deposit_out">Hoàn cọc</option>
-                  </select>
+                  </FieldSelect>
                 </label>
                 <label>
                   Phòng
-                  <select name="room" required>
+                  <FieldSelect name="room" required>
                     <option value="">Chọn phòng</option>
                     {has(page.Cash.Rooms)
                       ? page.Cash.Rooms.map((room, index) => (
                           <Fragment key={itemKey(room, index)}>
                             <option value={room.ID}>
-                              {room.Name} · đang giữ cuối kỳ{' '}
-                              {money(room.Held)}
+                              {room.Name} · đang giữ cuối kỳ {money(room.Held)}
                             </option>
                           </Fragment>
                         ))
                       : null}
-                  </select>
+                  </FieldSelect>
                 </label>
                 <CashFields page={page} />
                 <Action>Lưu giao dịch cọc</Action>
@@ -152,9 +161,7 @@ export function CashScreen({ page }: { page: PageData }) {
                   <p>
                     {entry.Date}
                     {has(entry.Category) ? <> · {entry.Category}</> : null}
-                    {has(entry.Reference) ? (
-                      <> · {entry.Reference}</>
-                    ) : null}
+                    {has(entry.Reference) ? <> · {entry.Reference}</> : null}
                   </p>
                   {has(entry.Note) ? (
                     <>
@@ -163,7 +170,7 @@ export function CashScreen({ page }: { page: PageData }) {
                   ) : null}
                 </div>
                 <strong>
-                  {has(income(entry)) ? <>+</> : <>−</>}
+                  {entry.Kind === 'deposit_applied' ? '' : has(income(entry)) ? '+' : '−'}
                   {money(entry.Amount)}
                 </strong>
                 {has(canAttach(entry)) ? (

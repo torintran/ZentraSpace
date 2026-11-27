@@ -1,5 +1,10 @@
 import { Alert, Badge, Button, Paper } from '@mantine/core';
-import { ArrowLeft, CircleAlert, CheckCircle2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  CircleAlert,
+  CheckCircle2,
+} from 'lucide-react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { clsx } from './presentation';
 
@@ -36,7 +41,7 @@ export function ActionLink({
   children,
   href,
   ...props
-}: ComponentPropsWithoutRef<'a'>) {
+}: ComponentPropsWithoutRef<'a'> & { leftSection?: ReactNode }) {
   const secondary = className?.split(' ').includes('secondary');
   return (
     <Button
@@ -136,5 +141,14 @@ export function FieldArea({
 }: ComponentPropsWithoutRef<'textarea'>) {
   return (
     <textarea className={clsx('mantine-Input-input', className)} {...props} />
+  );
+}
+
+export function FieldSelect(props: ComponentPropsWithoutRef<'select'>) {
+  return (
+    <span className="field-select">
+      <select {...props} />
+      <ChevronDown className="field-select-icon" size={18} aria-hidden />
+    </span>
   );
 }

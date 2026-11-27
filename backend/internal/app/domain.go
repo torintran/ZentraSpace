@@ -68,8 +68,12 @@ type Invite struct {
 	Expires                 time.Time
 	Attempts                int
 	Used, Revoked           bool
+	PendingDelivery         bool `json:",omitempty"`
 }
 type Book struct {
+	PlatformSMTP      *smtpConfiguration `json:",omitempty"`
+	Checkouts         []Checkout
+	LeaseEmails       map[string]string
 	PolicyAssignments []PolicyAssignment
 	Sites             []Site
 	Policies          []RoomPolicy
@@ -117,7 +121,7 @@ func accessCode() string {
 }
 
 func (v *Invite) verify(code string, now time.Time) bool {
-	if v.Used || v.Revoked || v.Attempts >= 5 || !now.Before(v.Expires) {
+	if v.Used || v.Revoked || v.PendingDelivery || v.Attempts >= 5 || !now.Before(v.Expires) {
 		return false
 	}
 	v.Attempts++
@@ -286,7 +290,7 @@ func (i Invoice) NetReduction() int64 { _, reduced := i.totals(); return reduced
 func (i Invoice) totals() (collected, reduced int64) {
 	for _, e := range i.Entries {
 		switch e.Kind {
-		case "Thu":
+		case "Thu", "Cấn cọc":
 			collected += e.Amount
 		case "Hoàn", "Đảo thu":
 			collected -= e.Amount
@@ -300,6 +304,16 @@ func (i Invoice) totals() (collected, reduced int64) {
 }
 func (i Invoice) Remaining() int64 { c, d := i.totals(); return max(0, i.Total-d-c) }
 func (i Invoice) Credit() int64    { c, d := i.totals(); return max(0, c-(i.Total-d)) }
+
+func (i Invoice) cashCollected() int64 {
+	amount := i.NetCollected()
+	for _, entry := range i.Entries {
+		if entry.Kind == "Cấn cọc" {
+			amount -= entry.Amount
+		}
+	}
+	return amount
+}
 
 func (i Invoice) Reversed(key string) bool {
 	for _, e := range i.Entries {
@@ -333,7 +347,6 @@ func (b *Book) reverse(id, key, original, note string) error {
 	if i.Reversed(original) {
 		return errors.New("Bút toán này đã được đảo.")
 	}
-	collected, _ := i.totals()
 	var kind string
 	switch source.Kind {
 	case "Thu":
@@ -342,7 +355,7 @@ func (b *Book) reverse(id, key, original, note string) error {
 				return errors.New("Khoản thu đã đối soát với sao kê. Hãy kiểm tra giao dịch ngân hàng trước khi điều chỉnh.")
 			}
 		}
-		if source.Amount > collected {
+		if source.Amount > i.cashCollected() {
 			return errors.New("Không thể đảo toàn bộ khoản thu vì số đã thu ròng thấp hơn khoản gốc.")
 		}
 		kind = "Đảo thu"
@@ -394,7 +407,7 @@ func (b *Book) addEntry(id string, entry Entry) error {
 			return errInvalid
 		}
 	case "Hoàn":
-		if entry.Note == "" || entry.Amount > collected {
+		if entry.Note == "" || entry.Amount > i.cashCollected() {
 			return errInvalid
 		}
 	default:

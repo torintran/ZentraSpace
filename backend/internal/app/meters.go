@@ -36,7 +36,8 @@ func (b *Book) meterOpening(room Room, period string) (meterOpening, error) {
 		return meterOpening{Electric: room.Electric, Water: room.Water}, nil
 	}
 	previous := start.AddDate(0, -1, 0).Format("2006-01")
-	if lease.Effective == period && !b.leaseAt(room, previous).ActiveAt(previous) {
+	priorLease := b.leaseAt(room, previous)
+	if lease.Effective == period && (!priorLease.ActiveAt(previous) || priorLease.EndedOn != "") {
 		return meterOpening{Handover: true}, nil
 	}
 	for _, i := range b.Invoices {

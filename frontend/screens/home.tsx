@@ -7,6 +7,7 @@ import { RoomsPanel } from './home-rooms';
 import { MetersPanel } from './home-meters';
 import { BillingPanel } from './home-billing';
 import { PoliciesPanel, SitesPanel } from './property-panels';
+import { SettingsPanel } from './settings';
 
 const workspace = {
   dashboard: { label: 'Tổng quan kỳ thu', Panel: DashboardPanel },
@@ -15,6 +16,7 @@ const workspace = {
   sites: { label: 'Dãy trọ', Panel: SitesPanel },
   policies: { label: 'Mẫu giá và phí', Panel: PoliciesPanel },
   billing: { label: 'Chốt kỳ thu', Panel: BillingPanel },
+  settings: { label: 'Cấu hình', Panel: SettingsPanel },
 };
 
 export function HomeScreen({ page }: { page: PageData }) {
@@ -27,27 +29,32 @@ export function HomeScreen({ page }: { page: PageData }) {
           <p className="eyebrow">QUẢN LÝ NHÀ TRỌ</p>
           <h1>{label}</h1>
         </div>
-        <form method="get" action="/" className="period">
-          <input type="hidden" name="tab" value={page.Tab} />
-          {page.SelectedSite && (
-            <input type="hidden" name="site" value={page.SelectedSite} />
-          )}
-          {has(page.Filter) ? (
-            <>
-              <input type="hidden" name="filter" value={page.Filter} />
-            </>
-          ) : null}
-          <label>
-            Kỳ thu
-            <FieldInput
-              type="month"
-              name="period"
-              required
-              defaultValue={page.Period}
-            />
-          </label>
-          <Action className="secondary">Xem kỳ</Action>
-        </form>
+        {page.Tab !== 'settings' && (
+          <form method="get" action="/" className="period">
+            <input type="hidden" name="tab" value={page.Tab} />
+            {page.SelectedSite && (
+              <input type="hidden" name="site" value={page.SelectedSite} />
+            )}
+            {page.ShowSiteDetails && (
+              <input type="hidden" name="view" value="details" />
+            )}
+            {has(page.Filter) ? (
+              <>
+                <input type="hidden" name="filter" value={page.Filter} />
+              </>
+            ) : null}
+            <label>
+              Kỳ thu
+              <FieldInput
+                type="month"
+                name="period"
+                required
+                defaultValue={page.Period}
+              />
+            </label>
+            <Action className="secondary">Xem kỳ</Action>
+          </form>
+        )}
       </div>
       <Panel page={page} />
     </>
