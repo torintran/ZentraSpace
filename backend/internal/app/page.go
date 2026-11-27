@@ -12,6 +12,12 @@ type RoomView struct {
 	HasPhoto   bool
 }
 type Page struct {
+	AvailableCredit                                                           int64
+	CreditTargets                                                             []CreditTarget
+	CreditTransfers                                                           []CreditTransferView
+	SiteMeterChecks                                                           []SiteMeterCheck
+	SiteMeterFocus                                                            string
+	MeterReviewHeld                                                           bool
 	EditSiteLocation                                                          bool
 	ShowSiteDetails                                                           bool
 	EditSiteDetails                                                           bool

@@ -194,7 +194,9 @@ function SiteDetailsPanel({
           reason={
             site.Rooms > 0
               ? 'Dãy trọ vẫn còn phòng. Hãy chuyển phòng hoặc xóa các phòng đủ điều kiện trước.'
-              : undefined
+              : site.HasMeterHistory
+                ? 'Dãy trọ đã có lịch sử công tơ tổng.'
+                : undefined
           }
         />
       </div>

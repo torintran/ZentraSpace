@@ -464,6 +464,92 @@ async function checkImportUpload(owner) {
   console.log('PASS Playwright: template XLSX, file preview and scoped CSV import');
 }
 
+async function checkSiteMeterReview(owner) {
+  await owner.goto(`${app}/?tab=meters&period=${period}`);
+  const csrf = await owner.locator('input[name="csrf"]').first().inputValue();
+  const siteName = 'Dãy công tơ ' + roomName;
+  const origin = {Origin:app};
+  const site = await owner.request.post(`${app}/action/site`, {headers:origin, form:{csrf,period,name:siteName,capacity:'2'},maxRedirects:0});
+  assert.equal(site.status(),303);
+  const siteID = new URL(site.headers().location,app).searchParams.get('site');
+  const code = roomName + '-CONG-TO';
+  const created = await owner.request.post(`${app}/action/room`, {headers:origin,form:{csrf,period,name:code,tenant:'Người thuê thử',site:siteID,rent:'2000000',electricRate:'3000',waterRate:'10000',electric:'20',water:'4'},maxRedirects:0});
+  assert.equal(created.status(),303);
+  await owner.goto(`${app}/?tab=meters&period=${period}`);
+  const subMeter = owner.locator('.meter-row').filter({hasText:code});
+  await fields(subMeter,{electric:'30',water:'6'});
+  await subMeter.getByRole('button',{name:'Lưu chỉ số'}).click();
+  const master = owner.locator('#site-meter-'+siteID);
+  await master.locator('summary').click();
+  const meterForm = master.locator('form[action="/action/site-meter-save"]');
+  await fields(meterForm,{electricMeter:'E-01',waterMeter:'W-01',electricBefore:'10',electricAfter:'25',waterBefore:'1',waterAfter:'3'});
+  await meterForm.getByRole('button',{name:'Lưu công tơ tổng'}).click();
+  await master.getByText('5 kWh · 0 m³',{exact:true}).waitFor();
+  await owner.goto(`${app}/?tab=billing&period=${period}`);
+  await owner.getByText(`Chờ duyệt công tơ tổng của ${siteName}.`,{exact:false}).waitFor();
+  await owner.getByRole('button',{name:'Tạo bảng kê nháp'}).click();
+  assert.equal(await owner.locator('article').filter({hasText:code}).count(),0);
+  await owner.goto(`${app}/?tab=meters&period=${period}&meterSite=${siteID}`);
+  const review = master.locator('form[action="/action/site-meter-approve"]');
+  await fields(review,{note:'Điện cầu thang'});
+  await review.getByRole('button',{name:'Duyệt chênh lệch'}).click();
+  await master.getByText('Đã duyệt',{exact:true}).waitFor();
+  await owner.goto(`${app}/?tab=billing&period=${period}`);
+  await owner.getByRole('button',{name:'Tạo bảng kê nháp'}).click();
+  await owner.locator('article').filter({hasText:code}).getByRole('link',{name:'Xem bảng kê'}).waitFor();
+  console.log('PASS Playwright: common-area meter variance holds and releases only affected billing');
+}
+
+async function checkPaymentCredits(owner) {
+  const first = '2026-10';
+  const last = '2026-11';
+  const name = roomName + '-TIEN-DU';
+  await owner.goto(`${app}/?tab=rooms&period=${first}`);
+  const csrf = await owner.locator('input[name=csrf]').first().inputValue();
+  const post = async (action, form) => {
+    const result = await owner.request.post(`${app}/action/${action}`, {headers:{Origin:app},form:{csrf,...form},maxRedirects:0});
+    assert.equal(result.status(),303);
+  };
+  await post('room', {period:first,name,tenant:'Khách thử tiền dư',rent:'1000000',electricRate:'0',waterRate:'0',electric:'0',water:'0'});
+  await owner.goto(`${app}/?tab=rooms&period=${first}`);
+  const roomLink = await owner.getByRole('link',{name:`Xem chi tiết phòng ${name}`,exact:true}).getAttribute('href');
+  const id = new URL(roomLink,app).pathname.split('/').at(-1);
+  const bills = [];
+  for (const month of [first,last]) {
+    await post('read',{period:month,id,electric:'0',water:'0'});
+    await post('draft',{period:month});
+    await owner.goto(`${app}/?tab=billing&period=${month}`);
+    const link = owner.locator('article').filter({hasText:name}).getByRole('link',{name:'Xem bảng kê'});
+    await link.click();
+    const invoice = new URL(owner.url()).pathname.split('/').at(-1);
+    bills.push(invoice);
+    await owner.getByRole('button',{name:'Phát hành bảng kê',exact:true}).click();
+    await owner.getByText('Đã phát hành',{exact:true}).waitFor();
+  }
+  await post('post',{id:bills[0],kind:'Thu',amount:'1200000',key:'playwright-credit-payment',method:'cash'});
+  await owner.goto(`${app}/?tab=billing&period=${first}&filter=credit`);
+  await owner.locator('article').filter({hasText:name}).getByRole('link',{name:'Xem bảng kê'}).click();
+  const credit = owner.locator('#invoice-credit');
+  const transfer = credit.locator('form[action="/action/credit-transfer"]');
+  await credit.getByText('200.000 ₫',{exact:true}).waitFor();
+  await transfer.locator('select[name=target]').selectOption(bills[1]);
+  await fields(transfer,{amount:'200000'});
+  await transfer.getByRole('button',{name:'Chuyển tiền dư',exact:true}).click();
+  await owner.getByRole('status').filter({hasText:'Đã cập nhật khoản tiền dư'}).waitFor();
+  const remaining = async () => {
+    const csv = await (await owner.request.get(`${app}/export?period=${last}`)).text();
+    return csv.split('\n').find(line => line.startsWith(name+',')).split(',')[4];
+  };
+  assert.equal(await remaining(),'800000');
+  await credit.getByText('Đảo chuyển tiền dư',{exact:true}).click();
+  const reverse = credit.locator('form[action="/action/credit-reverse"]');
+  await fields(reverse,{note:'Đảo khoản thử'});
+  await reverse.getByRole('button',{name:'Xác nhận đảo'}).click();
+  await credit.getByText('200.000 ₫',{exact:true}).waitFor();
+  assert.equal(await remaining(),'1000000');
+  console.log('PASS Playwright: carry credit to the next bill and reverse with balanced debt');
+}
+
 async function run() {
   assert.ok(password, 'The test environment requires an owner password.');
   const channel = process.env.ZS_BROWSER_CHANNEL;
@@ -676,6 +762,8 @@ async function run() {
     await checkRoomOnboarding(browser, owner, tenant);
     await checkPropertyWorkspace(browser, owner, tenant);
     await checkImportUpload(owner);
+    await checkSiteMeterReview(owner);
+    await checkPaymentCredits(owner);
   } finally {
     await browser.close();
   }

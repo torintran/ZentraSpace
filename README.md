@@ -51,6 +51,8 @@ Hồ sơ chính chỉ hiển thị hợp đồng của kỳ đang xem và tối 
 
 Để sửa một khoản thu hoặc ghi giảm nhập sai, mở **Lịch sử giao dịch**, chọn **Đảo bút toán** và nhập lý do. Lịch sử giữ cả hai bút toán và mã tham chiếu chứng từ gốc. Khoản thu đã ghép sao kê cần kiểm tra lại giao dịch ngân hàng trước khi điều chỉnh.
 
+Trong **Chốt kỳ thu**, dùng bộ lọc **Có tiền dư** để tìm bảng kê đã thu vượt số phải trả. Mở mục **Tiền thu dư** trên bảng kê để chuyển số dư sang kỳ sau của cùng hợp đồng hoặc đảo một lần chuyển có lý do. Sổ thu chi ghi tiền ở lần nhận thực tế. CSV công nợ có cột số dư đã chuyển và số dư còn có thể chuyển.
+
 Trong **Mẫu giá và phí**, chọn **Áp dụng mẫu cho nhiều phòng**, chọn dãy hoặc nhóm phòng chưa gán dãy và kỳ hiệu lực. Màn xem trước hiển thị giá và lý do bỏ qua của từng phòng. Khi xác nhận, các phòng đang chuẩn bị nhận bản sao mẫu theo kỳ đã chọn và ghi lần áp dụng vào lịch sử. Hợp đồng đã có và bảng kê đã phát hành giữ nguyên các mức đã ghi.
 
 Trong **Phòng và hợp đồng**, có thể tạo phòng trước và để trống người đại diện, kể cả khi nhập từ CSV. Đặt giá thuê và đơn giá điện nước khi tạo hoặc chỉnh sửa phòng, rồi mở **Giá và phí** để thêm phí riêng định kỳ. Phòng trống xuất hiện trong danh sách phòng và chưa vào hàng chờ nhập công tơ hoặc chốt kỳ thu.
@@ -64,6 +66,8 @@ Trong **Phòng và hợp đồng**, mục **Hợp đồng sắp hết hạn** hi
 Ghi chỉ số bàn giao cuối kỳ ở **Nhập điện nước**, sau đó mở **Trả phòng và tất toán** từ hồ sơ phòng. Ngày trả mặc định là hôm nay theo giờ Việt Nam. Xem chỉ số và các khoản tiền rồi xác nhận số cọc thực hoàn hoặc cấn vào bảng kê cuối. Bảng kê cuối chưa phát hành tính tiền thuê theo số ngày từ đầu kỳ tới hết ngày trả. Bảng kê đã phát hành giữ nguyên. Sổ thu chi ghi cấn cọc riêng với dòng tiền. Danh sách phòng và dãy cập nhật trạng thái trống ngay sau xác nhận. Hợp đồng mới có thể bắt đầu từ kỳ kế tiếp và lịch sử vẫn tra cứu được.
 
 Phòng không có hợp đồng hiệu lực được bỏ khỏi hàng chờ chốt chỉ số. Nếu cho thuê lại sau một kỳ trống, Chủ trọ nhập số lúc bàn giao và số cuối kỳ trong **Nhập điện nước**. Nếu thay công tơ điện hoặc nước giữa kỳ, ghi số cuối công tơ cũ, số đầu công tơ mới, số cuối kỳ và lý do. Bảng kê cho thấy sản lượng của hai đoạn cộng lại. Lý do lưu trong màn quản lý và chỉ số đã phát hành được khóa.
+
+Nếu dãy có công tơ tổng, mở **Nhập điện nước → Đối chiếu công tơ tổng** để ghi mã và chỉ số đầu/cuối kỳ. Khi chênh lệch hoặc còn thiếu chỉ số phòng, luồng chốt kỳ tạm giữ bảng kê của dãy đó. Chủ trọ nhập đủ dữ liệu và xác nhận lý do chênh lệch để tiếp tục. Hệ thống lưu người duyệt và áp tiền điện nước theo chỉ số riêng của từng phòng.
 
 Trong **Chốt kỳ thu**, mở **Hạn thanh toán và phí chung** để đặt hạn thu và một khoản phí chung cho từng phòng. Bảng kê hiển thị khoản phí thành dòng riêng. Thay đổi chỉ áp dụng cho bảng kê chưa phát hành. Khi thu tiền, chọn tiền mặt hoặc chuyển khoản và nhập mã chứng từ nếu có.
 

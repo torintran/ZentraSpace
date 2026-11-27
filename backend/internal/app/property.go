@@ -19,6 +19,7 @@ type SiteView struct {
 	Site
 	Rooms, Occupied int
 	MapURL          string
+	HasMeterHistory bool
 }
 
 func (b *Book) roomLabel(room Room) string {
@@ -146,6 +147,7 @@ func (b *Book) siteViews(period string) []SiteView {
 	views := make([]SiteView, 0, len(b.Sites))
 	for _, site := range b.Sites {
 		view := SiteView{Site: site, MapURL: site.mapURL()}
+		view.HasMeterHistory = slices.ContainsFunc(b.SiteMeterReadings, func(reading SiteMeterReading) bool { return reading.SiteID == site.ID })
 		for _, room := range b.Rooms {
 			if room.SiteID == site.ID {
 				view.Rooms++

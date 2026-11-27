@@ -28,11 +28,11 @@ Trạng thái ngày 27/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. C
 | --- | --- | --- | --- |
 | F01 | [x] Tạo môi trường phát triển tối thiểu | G03 | Docker dựng cổng Go, frontend Next.js và PostgreSQL từ DB trống. CI chạy Go test, build, migration và smoke test HTTP với dữ liệu tổng hợp. |
 | F02 | [ ] Đăng nhập và cô lập tổ chức | F01 | Đã gắn tài khoản với sổ theo tổ chức và kiểm hai chủ trọ qua phòng, bảng kê, CSV, ghi thu, ngân hàng và link riêng. Còn quyền nhiều tòa trong một tổ chức, quản trị tài khoản và audit truy cập hỗ trợ. |
-| F03 | [ ] Quản lý tòa và danh sách phòng | F02 | Tạo một tòa, lưu mã phòng duy nhất trong tòa, hiển thị và tìm phòng trên điện thoại. Test retry/validation và truy cập chéo org. |
+| F03 | [x] Quản lý dãy và danh sách phòng | F02 | Tạo và sửa dãy, ghim bản đồ, tìm và lọc phòng, kiểm mã phòng theo dãy, giới hạn sức chứa, xóa phòng chưa dùng và kiểm quyền theo tổ chức. |
 | F04 | [ ] Ghi hợp đồng và đại diện | F03 | Có ngày vào/ra giữa tháng, tính tiền thuê theo ngày và ghi chỉ số điện nước lúc bàn giao. Còn hỗ trợ hai hợp đồng nối tiếp trong cùng tháng và phân đoạn công tơ tương ứng. |
 | F05 | [ ] Chuyển dữ liệu đầu kỳ có hỗ trợ | F04 | Nhập bảng do pilot cung cấp, báo lỗi từng dòng, đối chiếu số phòng/hợp đồng/chỉ số/số dư mở. Chạy lại cùng lần nhập giữ số bản ghi; lưu biên bản đối chiếu. |
-| F06 | [ ] Nhập và xác nhận điện nước | F04 | Chủ trọ ghi mốc bàn giao hoặc thay một công tơ mỗi loại trong kỳ có lý do. Bảng kê tách số cũ/mới và khóa khi phát hành. Còn mã/định danh công tơ, ghi nhận người duyệt và hàng chờ chênh giữa công tơ tổng và phòng. |
-| F07 | [ ] Tính và tạo lô bảng kê nháp | F04, F06 | Đã tính kỳ đủ và kỳ lẻ bằng VND nguyên, có phí chung và phí riêng từng phòng thu một lần hoặc hằng tháng. Còn trạng thái chờ xử lý chênh lệch công tơ. |
+| F06 | [ ] Nhập và xác nhận điện nước | F04 | Có mốc bàn giao, thay công tơ, mã công tơ tổng, đối chiếu với tổng điện nước phòng và duyệt có lý do. Còn danh mục định danh công tơ từng phòng, tem QR và hồ sơ ca có nhiều lần thay trong một kỳ. |
+| F07 | [x] Tính và tạo lô bảng kê nháp | F04, F06 | Tính kỳ đủ và kỳ lẻ bằng VND nguyên, có phí chung và phí riêng. Hàng chờ chênh lệch công tơ giữ bảng kê tại dãy bị ảnh hưởng cho đến khi chủ trọ duyệt. |
 | F08 | [x] Phát hành bất biến | F07 | Bản xem trước được kiểm phiên bản trong transaction phát hành. Kiểm phát hành đồng thời, bỏ qua phòng thiếu chỉ số và khóa chỉ số của bảng kê đã phát hành. |
 | F14 | [ ] Xem bảng kê riêng sau xác minh | F08, G05 | Link có hạn/thu hồi và cần xác minh qua kênh đã đăng ký. Test chuyển tiếp, đọc sai phòng, hết hạn và thu hồi khi đã mở phiên. Người thuê đã xác minh đọc được mốc điện nước, cách tính, tổng và hạn trên web di động. |
 | F09 | [ ] Gửi lời nhắc qua Zalo | F14 | Nội dung copy và preview không có số tiền, tên hoặc số phòng. Người nhận mở link để xác minh. Đối chiếu màn đã xác minh với bảng kê chốt trên điện thoại Android/iPhone. |
@@ -43,9 +43,9 @@ Trạng thái ngày 27/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. C
 
 | Mã | Việc | Sau | Nghiệm thu và kiểm tra |
 | --- | --- | --- | --- |
-| F10 | [ ] Ghi nhận thu thủ công | F08 | Nhập tiền mặt/chuyển khoản và mã chứng từ khi có. Test thiếu, đủ, dư, nhấn lặp và hai lượt thu đồng thời. Số dư chưa phân bổ truy lại được. |
+| F10 | [ ] Ghi nhận thu thủ công | F08 | Ghi thu thiếu, đủ, dư và chống trùng. Có sổ chuyển tiền dư sang bảng kê kỳ sau của cùng hợp đồng và đảo chuyển. Còn nhận khoản chưa phân bổ khi chưa có bảng kê đích. |
 | F11 | [x] Điều chỉnh có chứng từ tham chiếu | F10 | Đảo khoản thu hoặc ghi giảm bằng bút toán mới có lý do và mã chứng từ gốc. Kiểm số dư sau thu một phần, gửi đồng thời, đảo lặp và trường hợp đã đối soát ngân hàng. |
-| F12 | [ ] Xuất công nợ theo kỳ | F10, F11 | Hiện từng phòng đã thu/còn thiếu và khoản chưa phân bổ. So CSV với sổ phụ và UI trên cùng kỳ, test dữ liệu có ký tự tiếng Việt. |
+| F12 | [ ] Xuất công nợ theo kỳ | F10, F11 | Có CSV công nợ, số đã tất toán, còn thiếu, chuyển dư và dư khả dụng từ bảng kê. Còn xuất các khoản nhận chưa gắn với bảng kê. |
 | F13 | [ ] Chuẩn bị vận hành pilot | F02, F08, F10, F14 | Diễn tập restore DB/tệp đã mã hóa và khóa cất riêng. Kiểm truy cập sai quyền, log/analytics/cache/preview không chứa số liệu chia sẻ, và rollback về sổ cũ. |
 | F15 | [ ] Hoàn thiện luồng chốt kỳ dễ thao tác | G05, F06, F09, F10 | Ba thao tác chính dễ thấy, nút có nhãn ≥44×44, zoom 200%, kiểm tương phản và focus. Thử tìm phòng, lọc và xử lý lô theo quyền. Che số liệu tổng dùng được khi mở màn hình chung. |
 | P01 | [ ] Chạy song song hai kỳ thật | F05, F09, F12, F13, F15 | Mục tiêu 4/5 quản lý từ 55 tuổi tự hoàn thành luồng. Kiểm người thuê đọc đúng bảng kê sau xác minh. Đối chiếu từng đồng, đo thời gian khách, hỏi lại, điều chỉnh, thời gian hỗ trợ và lượt quay lại. |

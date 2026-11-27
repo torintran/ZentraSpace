@@ -202,6 +202,23 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if err := b.setBilling(period, BillingSettings{DueDate: value("dueDate"), CommonFeeLabel: value("commonFeeLabel"), CommonFee: fee}); err != nil {
 				return inputError{err}
 			}
+		case "site-meter-save":
+			eb, e1 := number(r, "electricBefore", 0, 999999)
+			ea, e2 := number(r, "electricAfter", 0, 999999)
+			wb, e3 := number(r, "waterBefore", 0, 999999)
+			wa, e4 := number(r, "waterAfter", 0, 999999)
+			if errors.Join(e1, e2, e3, e4) != nil {
+				return errInvalid
+			}
+			if err := b.saveSiteReading(SiteMeterReading{SiteID: id, Period: period, ElectricMeter: value("electricMeter"), WaterMeter: value("waterMeter"), ElectricBefore: eb, ElectricAfter: ea, WaterBefore: wb, WaterAfter: wa}, value("revision")); err != nil {
+				return inputError{err}
+			}
+			next = "/?tab=meters&period=" + period + "&saved=1&meterSite=" + url.QueryEscape(id) + "#site-meter-" + id
+		case "site-meter-approve":
+			if err := b.approveSiteMeters(id, period, value("revision"), s.username, value("note"), time.Now()); err != nil {
+				return inputError{err}
+			}
+			next = "/?tab=meters&period=" + period + "&saved=1&meterSite=" + url.QueryEscape(id) + "#site-meter-" + id
 		case "lease":
 			terms := LeaseTerms{RoomID: id, Effective: value("effective"), Tenant: value("tenant"),
 				Phone: value("phone"), SignedOn: value("signedOn"), StartOn: value("startOn"),
@@ -376,7 +393,7 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			}
 		case "draft":
 			b.draft(period)
-			if value("filter") == "draft" || value("filter") == "due" {
+			if value("filter") == "draft" || value("filter") == "due" || value("filter") == "credit" {
 				next += "&filter=" + value("filter")
 			}
 		case "issue":
@@ -407,6 +424,22 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{err}
 			}
 			next = "/invoice/" + id
+		case "credit-transfer", "credit-reverse":
+			amount, err := number(r, "amount", 1, 100000000000)
+			if err != nil {
+				return err
+			}
+			move := CreditTransfer{Key: value("key"), SourceID: id, TargetID: value("target"), Amount: amount, Note: value("note")}
+			if action == "credit-reverse" {
+				move.Reverses = value("original")
+				if move.Reverses == "" {
+					return errInvalid
+				}
+			}
+			if err := b.postCreditTransfer(move, time.Now()); err != nil {
+				return inputError{err}
+			}
+			next = "/invoice/" + id + "?saved=credit#invoice-credit"
 		case "invite":
 			i := b.invoice(id)
 			if i == nil || !i.Issued {

@@ -10,6 +10,15 @@ export function BillingPanel({ page }: { page: PageData }) {
         <Panel className="card" as="section">
           <h2>Bảng kê kỳ {page.Period}</h2>
           <p className="subtle">Tạo bản nháp cho phòng đã chốt điện nước.</p>
+          {!!page.SiteMeterChecks?.length && (
+            <p className="empty">
+              Chờ duyệt công tơ tổng của{' '}
+              {page.SiteMeterChecks.map((check) => check.SiteName).join(', ')}.{' '}
+              <a href={'/?tab=meters&period=' + page.Period + '#site-meters'}>
+                Xem chênh lệch
+              </a>
+            </p>
+          )}
           <div className="actions">
             <form method="post" action="/action/draft">
               <input type="hidden" name="csrf" value={page.CSRF} />
@@ -50,6 +59,13 @@ export function BillingPanel({ page }: { page: PageData }) {
             >
               Còn phải thu
             </a>
+            <a
+              href={'/?tab=billing&period=' + page.Period + '&filter=credit'}
+              className={page.Filter === 'credit' ? 'active' : undefined}
+              aria-current={page.Filter === 'credit' ? 'page' : undefined}
+            >
+              Có tiền dư
+            </a>
           </nav>
           {has(page.Invoices) ? (
             page.Invoices.map((invoice, index) => (
@@ -60,6 +76,8 @@ export function BillingPanel({ page }: { page: PageData }) {
                     <p>
                       {!has(invoice.Issued) ? (
                         <>Bản nháp</>
+                      ) : has(invoice.Credit) ? (
+                        <>Có tiền thu dư</>
                       ) : has(invoice.Remaining) ? (
                         <>Còn phải thu</>
                       ) : (
@@ -95,9 +113,7 @@ export function BillingPanel({ page }: { page: PageData }) {
               <Fragment key={itemKey(room, index)}>
                 <div className="list-row">
                   <strong>{room.Name}</strong>
-                  <Status
-                    className={'badge ' + (has(room.Done) ? 'good' : '')}
-                  >
+                  <Status className={'badge ' + (has(room.Done) ? 'good' : '')}>
                     {has(room.Done) ? <>Có chỉ số</> : <>Thiếu chỉ số</>}
                   </Status>
                 </div>

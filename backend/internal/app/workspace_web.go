@@ -19,10 +19,13 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 	}
 	period := periodOf(r.URL.Query().Get("period"))
 	filter := r.URL.Query().Get("filter")
-	if (tab != "meters" || filter != "missing") && (tab != "billing" || (filter != "draft" && filter != "due")) {
+	if (tab != "meters" || filter != "missing") && (tab != "billing" || (filter != "draft" && filter != "due" && filter != "credit")) {
 		filter = ""
 	}
 	p := Page{Screen: "home", Role: s.role, Tab: tab, Period: period, Filter: filter, CSRF: hash(id + ":csrf")}
+	if tab == "meters" && s.role == "owner" {
+		p.SiteMeterFocus = r.URL.Query().Get("meterSite")
+	}
 	if tab == "settings" {
 		settings, err := a.smtpView(r.Context(), s.platformAdmin)
 		if err != nil {
@@ -66,6 +69,14 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		}
 		if tab == "billing" {
 			p.BillingSettings = b.Billing[period]
+		}
+		if s.role == "owner" && (tab == "meters" || tab == "billing") {
+			for _, site := range b.Sites {
+				check := b.checkSiteMeters(site, period)
+				if tab == "meters" || check.NeedsReview {
+					p.SiteMeterChecks = append(p.SiteMeterChecks, check)
+				}
+			}
 		}
 		if tab == "rooms" || tab == "sites" || tab == "policies" {
 			p.Sites = b.siteViews(period)
@@ -131,7 +142,8 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		if s.role == "owner" {
 			for _, i := range b.Invoices {
 				if i.Period == period && (filter != "draft" || !i.Issued) &&
-					(filter != "due" || (i.Issued && i.Remaining() > 0)) {
+					(filter != "due" || (i.Issued && i.Remaining() > 0)) &&
+					(filter != "credit" || (i.Issued && i.transferableCredit() > 0)) {
 					p.Invoices = append(p.Invoices, i)
 				}
 			}

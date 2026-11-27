@@ -4,6 +4,7 @@ import { has, itemKey } from './view';
 import type { PageData, Invoice } from './view';
 
 import { Check, Gauge } from 'lucide-react';
+import { SiteMeters } from './site-meters';
 export function MetersPanel({ page }: { page: PageData }) {
   return (
     <>
@@ -12,6 +13,11 @@ export function MetersPanel({ page }: { page: PageData }) {
         <p className="subtle">
           Kiểm tra số trên công tơ, rồi lưu theo từng phòng.
         </p>
+        {!!page.SiteMeterChecks?.length && (
+          <p>
+            <a href="#site-meters">Đối chiếu công tơ tổng</a>
+          </p>
+        )}
         <nav className="tabs" aria-label="Lọc theo chỉ số">
           <a
             href={'/?tab=meters&period=' + page.Period}
@@ -286,9 +292,7 @@ export function MetersPanel({ page }: { page: PageData }) {
                             max="999999"
                             inputMode="numeric"
                             required
-                            defaultValue={
-                              has(room.Done) ? room.Electric : ''
-                            }
+                            defaultValue={has(room.Done) ? room.Electric : ''}
                           />
                         </label>
                         <label>
@@ -300,9 +304,7 @@ export function MetersPanel({ page }: { page: PageData }) {
                             max="999999"
                             inputMode="numeric"
                             required
-                            defaultValue={
-                              has(room.Done) ? room.Water : ''
-                            }
+                            defaultValue={has(room.Done) ? room.Water : ''}
                           />
                         </label>
                       </div>
@@ -336,6 +338,7 @@ export function MetersPanel({ page }: { page: PageData }) {
           </>
         )}
       </Panel>
+      <SiteMeters page={page} />
     </>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from './view';
 import type { PageData, Invoice } from './view';
 import { InvoiceDetails } from './common';
+import { InvoiceCredit } from './invoice-credit';
 
 export function InvoiceScreen({ page }: { page: PageData }) {
   const bill = page.Invoice;
@@ -195,16 +196,28 @@ export function InvoiceScreen({ page }: { page: PageData }) {
                 Kiểm tra tiền thuê và cách tính điện nước. Sau khi phát hành,
                 thay đổi được ghi thành giao dịch điều chỉnh.
               </p>
-              <form method="post" action="/action/issue">
-                <input type="hidden" name="csrf" value={page.CSRF} />
-                <input type="hidden" name="id" value={bill.ID} />
-                <input type="hidden" name="revision" value={bill.Revision} />
-                <Action>Phát hành bảng kê</Action>
-              </form>
+              {page.MeterReviewHeld ? (
+                <p className="empty">
+                  Dãy trọ còn công tơ tổng cần duyệt.{' '}
+                  <a
+                    href={'/?tab=meters&period=' + bill.Period + '#site-meters'}
+                  >
+                    Xem chênh lệch
+                  </a>
+                </p>
+              ) : (
+                <form method="post" action="/action/issue">
+                  <input type="hidden" name="csrf" value={page.CSRF} />
+                  <input type="hidden" name="id" value={bill.ID} />
+                  <input type="hidden" name="revision" value={bill.Revision} />
+                  <Action>Phát hành bảng kê</Action>
+                </form>
+              )}
             </>
           )}
         </Panel>
       </div>
+      <InvoiceCredit page={page} />
       {has(bill.Entries) ? (
         <>
           <Panel className="card history" as="section">

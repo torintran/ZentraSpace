@@ -47,10 +47,10 @@ func (b *Book) dashboard(period string) Dashboard {
 		if invoice.Period == period {
 			bills[invoice.RoomID] = invoice
 			if invoice.Issued {
-				collected, reduced := invoice.totals()
+				reduced := invoice.NetReduction()
 				d.Issued++
 				d.Billed += invoice.Total - reduced
-				d.Collected += collected
+				d.Collected += invoice.cashCollected()
 				d.Due += invoice.Remaining()
 				d.Credit += invoice.Credit()
 				if invoice.Remaining() == 0 {

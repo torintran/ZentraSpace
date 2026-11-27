@@ -72,24 +72,27 @@ type Invite struct {
 	PendingDelivery         bool `json:",omitempty"`
 }
 type Book struct {
-	PlatformSMTP      *smtpConfiguration `json:",omitempty"`
-	Checkouts         []Checkout
-	LeaseEmails       map[string]string
-	PolicyAssignments []PolicyAssignment
-	Sites             []Site
-	Policies          []RoomPolicy
-	Residents         []Resident
-	CashEntries       []CashEntry
-	Rooms             []Room
-	RoomFees          []RoomFee
-	Leases            []LeaseTerms
-	Billing           map[string]BillingSettings
-	Readings          []Reading
-	Invoices          []Invoice
-	Invites           []Invite
-	Bank              BankAccount
-	MockBankAutoMatch bool
-	Transfers         []BankTransfer
+	CreditTransfers    []CreditTransfer
+	SiteMeterReadings  []SiteMeterReading
+	SiteMeterApprovals []SiteMeterApproval
+	PlatformSMTP       *smtpConfiguration `json:",omitempty"`
+	Checkouts          []Checkout
+	LeaseEmails        map[string]string
+	PolicyAssignments  []PolicyAssignment
+	Sites              []Site
+	Policies           []RoomPolicy
+	Residents          []Resident
+	CashEntries        []CashEntry
+	Rooms              []Room
+	RoomFees           []RoomFee
+	Leases             []LeaseTerms
+	Billing            map[string]BillingSettings
+	Readings           []Reading
+	Invoices           []Invoice
+	Invites            []Invite
+	Bank               BankAccount
+	MockBankAutoMatch  bool
+	Transfers          []BankTransfer
 }
 
 var (
@@ -235,8 +238,12 @@ func (b *Book) draft(period string) int {
 		return 0
 	}
 	n := 0
+	hold := make(map[string]bool)
+	for _, site := range b.Sites {
+		hold[site.ID] = b.siteMeterHold(site.ID, period)
+	}
 	for _, r := range b.Rooms {
-		if !b.leaseAt(r, period).ActiveAt(period) {
+		if hold[r.SiteID] || !b.leaseAt(r, period).ActiveAt(period) {
 			continue
 		}
 		reading := b.reading(r.ID, period)
@@ -263,11 +270,15 @@ func (b *Book) issue(id string) error {
 	if i == nil {
 		return errMissing
 	}
-	if !i.Issued {
-		room := b.room(i.RoomID)
-		if room == nil || !b.leaseAt(*room, i.Period).ActiveAt(i.Period) {
-			return errors.New("Phòng không có hợp đồng hiệu lực trong kỳ này.")
-		}
+	if i.Issued {
+		return nil
+	}
+	room := b.room(i.RoomID)
+	if room == nil || !b.leaseAt(*room, i.Period).ActiveAt(i.Period) {
+		return errors.New("Phòng không có hợp đồng hiệu lực trong kỳ này.")
+	}
+	if b.siteMeterHold(room.SiteID, i.Period) {
+		return errors.New("Dãy trọ còn chênh lệch công tơ tổng cần duyệt trước khi phát hành.")
 	}
 	i.Issued = true
 	i.IssuedOn = time.Now().In(vietnam).Format(time.DateOnly)
@@ -295,9 +306,9 @@ func (i Invoice) NetReduction() int64 { _, reduced := i.totals(); return reduced
 func (i Invoice) totals() (collected, reduced int64) {
 	for _, e := range i.Entries {
 		switch e.Kind {
-		case "Thu", "Cấn cọc":
+		case "Thu", "Cấn cọc", creditIn, creditOutReversed:
 			collected += e.Amount
-		case "Hoàn", "Đảo thu":
+		case "Hoàn", "Đảo thu", creditOut, creditInReversed:
 			collected -= e.Amount
 		case "Giảm":
 			reduced += e.Amount
@@ -313,8 +324,11 @@ func (i Invoice) Credit() int64    { c, d := i.totals(); return max(0, c-(i.Tota
 func (i Invoice) cashCollected() int64 {
 	amount := i.NetCollected()
 	for _, entry := range i.Entries {
-		if entry.Kind == "Cấn cọc" {
+		switch entry.Kind {
+		case "Cấn cọc", creditIn, creditOutReversed:
 			amount -= entry.Amount
+		case creditInReversed, creditOut:
+			amount += entry.Amount
 		}
 	}
 	return amount
@@ -334,7 +348,7 @@ func (b *Book) reverse(id, key, original, note string) error {
 	if i == nil {
 		return errMissing
 	}
-	if !i.Issued || len(key) < 8 || len(key) > 80 || strings.HasPrefix(key, "bank-") || original == "" || note == "" || len(note) > 240 {
+	if !i.Issued || len(key) < 8 || len(key) > 80 || strings.HasPrefix(key, "bank-") || strings.HasPrefix(key, "credit-") || original == "" || note == "" || len(note) > 240 {
 		return errInvalid
 	}
 	var source Entry
@@ -360,7 +374,7 @@ func (b *Book) reverse(id, key, original, note string) error {
 				return errors.New("Khoản thu đã đối soát với sao kê. Hãy kiểm tra giao dịch ngân hàng trước khi điều chỉnh.")
 			}
 		}
-		if source.Amount > i.cashCollected() {
+		if source.Amount > i.refundableCash() {
 			return errors.New("Không thể đảo toàn bộ khoản thu vì số đã thu ròng thấp hơn khoản gốc.")
 		}
 		kind = "Đảo thu"
@@ -374,7 +388,7 @@ func (b *Book) reverse(id, key, original, note string) error {
 }
 
 func (b *Book) post(id string, entry Entry) error {
-	if strings.HasPrefix(entry.Key, "bank-") {
+	if strings.HasPrefix(entry.Key, "bank-") || strings.HasPrefix(entry.Key, "credit-") {
 		return errInvalid
 	}
 	return b.addEntry(id, entry)
@@ -412,7 +426,7 @@ func (b *Book) addEntry(id string, entry Entry) error {
 			return errInvalid
 		}
 	case "Hoàn":
-		if entry.Note == "" || entry.Amount > i.cashCollected() {
+		if entry.Note == "" || entry.Amount > i.refundableCash() {
 			return errInvalid
 		}
 	default:

@@ -11,6 +11,7 @@ import (
 
 type session struct {
 	role, organization string
+	username           string
 	expires            time.Time
 	platformAdmin      bool
 }
@@ -56,7 +57,7 @@ func (a *App) allow(key string, n int, span time.Duration) bool {
 	a.limits[key] = v
 	return true
 }
-func (a *App) newSession(role, org string, d time.Duration, platformAdmin bool) string {
+func (a *App) newSession(role, org, username string, d time.Duration, platformAdmin bool) string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for k, v := range a.sessions {
@@ -65,7 +66,7 @@ func (a *App) newSession(role, org string, d time.Duration, platformAdmin bool) 
 		}
 	}
 	id := token()
-	a.sessions[hash(id)] = session{role: role, organization: org, expires: time.Now().Add(d), platformAdmin: platformAdmin}
+	a.sessions[hash(id)] = session{role: role, organization: org, username: username, expires: time.Now().Add(d), platformAdmin: platformAdmin}
 	return id
 }
 func (a *App) getSession(r *http.Request, name string) (session, string) {
@@ -116,7 +117,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		a.page(w, r, Page{Screen: "login", Status: http.StatusUnauthorized, Error: "Kiểm tra lại tài khoản hoặc mật khẩu.", LoginProfile: profile})
 		return
 	}
-	id := a.newSession(account.role, account.organization, 8*time.Hour, username == "owner" && account.organization == pilotOrg)
+	id := a.newSession(account.role, account.organization, username, 8*time.Hour, username == "owner" && account.organization == pilotOrg)
 	a.cookie(w, "zs_staff", id, "/", 8*3600)
 	http.Redirect(w, r, "/", 303)
 }

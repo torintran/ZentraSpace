@@ -16,6 +16,9 @@ func (b *Book) deleteSite(id string) error {
 	if slices.ContainsFunc(b.Rooms, func(room Room) bool { return room.SiteID == id }) {
 		return errors.New("Dãy trọ vẫn còn phòng. Hãy chuyển phòng sang dãy khác hoặc xóa các phòng đủ điều kiện trước.")
 	}
+	if slices.ContainsFunc(b.SiteMeterReadings, func(reading SiteMeterReading) bool { return reading.SiteID == id }) {
+		return errors.New("Dãy trọ đã có lịch sử công tơ tổng.")
+	}
 	b.Sites = slices.DeleteFunc(b.Sites, func(site Site) bool { return site.ID == id })
 	return nil
 }

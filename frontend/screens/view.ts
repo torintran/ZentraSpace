@@ -74,6 +74,7 @@ type RoomView = Room & {
   HasPhoto: boolean;
 };
 type Site = {
+  HasMeterHistory: boolean;
   ID: string;
   Name: string;
   Address: string;
@@ -230,6 +231,12 @@ type Dashboard = {
     | null;
 };
 export type PageData = {
+  AvailableCredit: number;
+  CreditTargets: { ID: string; Period: string; Remaining: number }[] | null;
+  CreditTransfers: { Key: string; TargetID: string; TargetPeriod: string; Amount: number; Date: string; Note: string; Reversed: boolean }[] | null;
+  SiteMeterFocus: string;
+  SiteMeterChecks: {SiteID: string; SiteName: string; Period: string; Revision: string; ElectricMeter: string; WaterMeter: string; ElectricBefore: number; ElectricAfter: number; WaterBefore: number; WaterAfter: number; RoomElectric: number; RoomWater: number; ElectricDelta: number; WaterDelta: number; Missing: number; Recorded: boolean; NeedsReview: boolean; Approved: boolean; ApprovedBy: string; ApprovedOn: string; ApprovalNote: string}[] | null;
+  MeterReviewHeld: boolean;
   RoomArchive: boolean;
   ArchiveKind: string;
   ArchivePeriod: string;

@@ -23,13 +23,23 @@ func (a *App) invoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := Page{Screen: "invoice", Role: s.role, CSRF: hash(id + ":csrf"), SMTP: settings}
+	if r.URL.Query().Get("saved") == "credit" {
+		p.Message = "Đã cập nhật khoản tiền dư."
+	}
 	err = a.store.book(r.Context(), s.organization, false, func(b *Book) error {
 		p.Invoice = b.invoice(r.PathValue("id"))
 		if p.Invoice == nil {
 			return errMissing
 		}
+		if room := b.room(p.Invoice.RoomID); room != nil && !p.Invoice.Issued {
+			p.MeterReviewHeld = b.siteMeterHold(room.SiteID, p.Invoice.Period)
+		}
 		if settings.Configured && p.Invoice.Issued {
 			p.VerificationEmail = b.LeaseEmails[p.Invoice.RoomID+"/"+p.Invoice.LeaseEffective]
+		}
+		if p.Invoice.Issued {
+			p.AvailableCredit = p.Invoice.transferableCredit()
+			p.CreditTargets, p.CreditTransfers = b.creditOptions(p.Invoice)
 		}
 		p.ReconciledEntries = make(map[string]bool)
 		for _, tr := range b.Transfers {
@@ -61,13 +71,13 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	period := periodOf(r.URL.Query().Get("period"))
-	var rows = [][]string{{"Phòng", "Kỳ", "Tổng bảng kê (VND)", "Đã thu ròng (VND)", "Còn thiếu (VND)", "Thu dư (VND)", "Điều chỉnh giảm (VND)", "Phải thu sau điều chỉnh (VND)"}}
+	var rows = [][]string{{"Phòng", "Kỳ", "Tổng bảng kê (VND)", "Đã tất toán ròng (VND)", "Còn thiếu (VND)", "Thu dư (VND)", "Điều chỉnh giảm (VND)", "Phải thu sau điều chỉnh (VND)", "Tiền dư đã chuyển (VND)", "Tiền dư có thể chuyển (VND)"}}
 	err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
 		for _, i := range b.Invoices {
 			if i.Issued && i.Period == period {
 				c, reduced := i.totals()
 				rows = append(rows, []string{plainCSV(i.RoomName), i.Period, strconv.FormatInt(i.Total, 10), strconv.FormatInt(c, 10),
-					strconv.FormatInt(i.Remaining(), 10), strconv.FormatInt(i.Credit(), 10), strconv.FormatInt(reduced, 10), strconv.FormatInt(i.Total-reduced, 10)})
+					strconv.FormatInt(i.Remaining(), 10), strconv.FormatInt(i.Credit(), 10), strconv.FormatInt(reduced, 10), strconv.FormatInt(i.Total-reduced, 10), strconv.FormatInt(i.transferredCredit(), 10), strconv.FormatInt(i.transferableCredit(), 10)})
 			}
 		}
 		return nil
