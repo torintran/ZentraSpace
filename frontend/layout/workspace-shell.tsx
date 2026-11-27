@@ -2,10 +2,21 @@
 
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
+import { SiteHeader } from './site-header';
 
 const sidebarPreference = 'zentraspace.sidebar.collapsed';
 
-export function DesktopSidebar({ children }: { children: ReactNode }) {
+export function WorkspaceShell({
+  brand,
+  account,
+  sidebar,
+  children,
+}: {
+  brand: ReactNode;
+  account: ReactNode;
+  sidebar: ReactNode;
+  children: ReactNode;
+}) {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -29,20 +40,28 @@ export function DesktopSidebar({ children }: { children: ReactNode }) {
   const label = collapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên';
   const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
   return (
-    <div className="workspace-sidebar-desktop" data-collapsed={collapsed}>
-      <button
-        type="button"
-        className="workspace-sidebar-toggle"
-        aria-label={label}
-        aria-expanded={!collapsed}
-        aria-controls="workspace-desktop-links"
-        title={label}
-        onClick={toggle}
-      >
-        <Icon size={20} aria-hidden />
-        <span className="workspace-link-label">Thu gọn</span>
-      </button>
-      <div id="workspace-desktop-links">{children}</div>
+    <div className="workspace-shell" data-sidebar-collapsed={collapsed}>
+      <SiteHeader
+        brand={brand}
+        account={account}
+        control={
+          <button
+            type="button"
+            className="workspace-sidebar-toggle"
+            aria-label={label}
+            aria-expanded={!collapsed}
+            aria-controls="workspace-desktop-links"
+            title={label}
+            onClick={toggle}
+          >
+            <Icon size={20} aria-hidden />
+          </button>
+        }
+      />
+      <div className="workspace-frame with-sidebar">
+        {sidebar}
+        {children}
+      </div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ Lệnh `docker compose exec web zentraspace seed-lease-demo 2026-11` bổ sung s
 
 Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để nhập một phòng hoặc dán CSV theo mẫu. Xem kết quả kiểm CSV trước khi lưu. Sang **Nhập điện nước** để ghi chỉ số cuối kỳ, sau đó vào **Chốt kỳ thu** để tạo bản nháp. Mở từng bảng kê, kiểm tiền và phát hành. Thao tác thu thiếu, thu dư, hoàn và ghi giảm đều có lịch sử. CSV công nợ tải được từ màn chốt kỳ.
 
-Trên máy tính, bấm **Thu gọn** ở đầu thanh bên để chỉ hiện biểu tượng. Bấm biểu tượng mở ở cùng vị trí để hiện lại tên các mục. Trình duyệt ghi nhớ lựa chọn này khi bạn chuyển trang hoặc tải lại. Trên điện thoại, bấm **Menu quản lý** để mở hoặc đóng danh sách.
+Trên máy tính, bấm nút cạnh logo ZentraSpace ở góc trên bên trái để thu gọn hoặc mở rộng thanh bên. Chế độ thu gọn chỉ hiện biểu tượng. Trình duyệt ghi nhớ lựa chọn khi bạn chuyển trang hoặc tải lại. Trên điện thoại, bấm **Menu quản lý** để mở hoặc đóng danh sách.
 
 Tạo **Dãy trọ** bằng tên, địa chỉ và số phòng tối đa, rồi chọn **Xem phòng** để tạo hoặc lọc phòng thuộc dãy. Nút **Mở bản đồ** dùng địa chỉ hoặc tọa độ đã lưu và mở OpenStreetMap. Phòng cũ có thể được gán dãy từ màn chỉnh sửa.
 

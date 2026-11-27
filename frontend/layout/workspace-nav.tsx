@@ -10,7 +10,6 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { PageData } from '../screens/view';
-import { DesktopSidebar } from './desktop-sidebar';
 
 const navigation = [
   { tab: 'dashboard', label: 'Tổng quan', Icon: LayoutDashboard },
@@ -68,9 +67,9 @@ function WorkspaceLinks({ page }: { page: PageData }) {
 export function WorkspaceNav({ page }: { page: PageData }) {
   return (
     <aside className="workspace-sidebar">
-      <DesktopSidebar>
+      <div className="workspace-sidebar-desktop" id="workspace-desktop-links">
         <WorkspaceLinks page={page} />
-      </DesktopSidebar>
+      </div>
       <details className="workspace-sidebar-mobile">
         <summary>
           <Menu size={20} aria-hidden /> Menu quản lý

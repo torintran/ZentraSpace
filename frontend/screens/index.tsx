@@ -1,5 +1,7 @@
 import { LogOut } from 'lucide-react';
+import { SiteHeader } from '../layout/site-header';
 import { WorkspaceNav } from '../layout/workspace-nav';
+import { WorkspaceShell } from '../layout/workspace-shell';
 import { Action, Notice } from './components';
 import type { PageData, Screen } from './view';
 import { LoginScreen } from './login';
@@ -44,57 +46,62 @@ const wide = new Set<Screen>([
 ]);
 export function Screens({ page }: { page: PageData }) {
   const ScreenComponent = screens[page.Screen];
+  const brand = (
+    <a className="brand" href="/" aria-label="ZentraSpace">
+      <img src="/assets/icon.svg" alt="" width={37} height={37} />
+      <span>
+        Zentra<span className="accent">Space</span>
+      </span>
+    </a>
+  );
+  const account = page.Role && (
+    <form action="/action/logout" method="post">
+      <input type="hidden" name="csrf" value={page.CSRF} />
+      <Action
+        className="secondary small"
+        leftSection={<LogOut aria-hidden size={17} />}
+      >
+        Đăng xuất
+      </Action>
+    </form>
+  );
+  const content = (
+    <main
+      id="main"
+      className={wide.has(page.Screen) ? 'layout' : 'layout narrow'}
+    >
+      {page.Error && (
+        <Notice className="notice error" role="alert">
+          {page.Error}
+        </Notice>
+      )}
+      {page.Message && (
+        <Notice className="notice" role="status">
+          {page.Message}
+        </Notice>
+      )}
+      <ScreenComponent page={page} />
+    </main>
+  );
   return (
     <>
       <a className="skip" href="#main">
         Đến nội dung
       </a>
-      <header className="bar">
-        <div className="bar-inner">
-          <a className="brand" href="/" aria-label="ZentraSpace">
-            <img src="/assets/icon.svg" alt="" width={37} height={37} />
-            <span>
-              Zentra<span className="accent">Space</span>
-            </span>
-          </a>
-          {page.Role && (
-            <form action="/action/logout" method="post">
-              <input type="hidden" name="csrf" value={page.CSRF} />
-              <Action
-                className="secondary small"
-                leftSection={<LogOut aria-hidden size={17} />}
-              >
-                Đăng xuất
-              </Action>
-            </form>
-          )}
-        </div>
-      </header>
-      <div
-        className={
-          page.Role === 'owner'
-            ? 'workspace-frame with-sidebar'
-            : 'workspace-frame'
-        }
-      >
-        {page.Role === 'owner' && <WorkspaceNav page={page} />}
-        <main
-          id="main"
-          className={wide.has(page.Screen) ? 'layout' : 'layout narrow'}
+      {page.Role === 'owner' ? (
+        <WorkspaceShell
+          brand={brand}
+          account={account}
+          sidebar={<WorkspaceNav page={page} />}
         >
-          {page.Error && (
-            <Notice className="notice error" role="alert">
-              {page.Error}
-            </Notice>
-          )}
-          {page.Message && (
-            <Notice className="notice" role="status">
-              {page.Message}
-            </Notice>
-          )}
-          <ScreenComponent page={page} />
-        </main>
-      </div>
+          {content}
+        </WorkspaceShell>
+      ) : (
+        <>
+          <SiteHeader brand={brand} account={account} />
+          <div className="workspace-frame">{content}</div>
+        </>
+      )}
       <footer className="site-footer">
         <div className="layout site-footer-inner">
           <div className="site-footer-identity">

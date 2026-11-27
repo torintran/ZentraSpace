@@ -109,11 +109,16 @@ async function checkPropertyWorkspace(owner, tenant) {
   await owner.setViewportSize({width:1440, height:900});
   await owner.goto(`${app}/?period=${period}`);
   const sidebar = owner.getByRole('navigation', {name:'Khu vực quản lý'});
+  const header = owner.getByRole('banner');
   const desktop = owner.locator('.workspace-sidebar-desktop');
   const expandedWidth = (await desktop.boundingBox()).width;
-  await owner.getByRole('button', {name:'Thu gọn thanh bên'}).press('Enter');
-  const expand = owner.getByRole('button', {name:'Mở rộng thanh bên'});
+  const collapse = header.getByRole('button', {name:'Thu gọn thanh bên'});
+  const togglePosition = await collapse.boundingBox();
+  await collapse.press('Enter');
+  const expand = header.getByRole('button', {name:'Mở rộng thanh bên'});
   await expand.waitFor();
+  assert.deepEqual(await expand.boundingBox(), togglePosition);
+  assert.equal(await sidebar.getByRole('button').count(), 0);
   assert.equal(await expand.getAttribute('aria-expanded'), 'false');
   assert.ok((await desktop.boundingBox()).width < expandedWidth);
   await sidebar.getByRole('link', {name:'Dãy trọ', exact:true}).click();
@@ -208,6 +213,7 @@ async function checkPropertyWorkspace(owner, tenant) {
   await timeline.getByText('90.000 ₫', {exact:true}).waitFor();
 
   await owner.setViewportSize({width:320, height:820});
+  await header.getByRole('button', {name:'Thu gọn thanh bên'}).waitFor({state:'hidden'});
   const mobileMenu = owner.locator('.workspace-sidebar-mobile');
   await mobileMenu.locator('summary').click();
   await mobileMenu.getByRole('link', {name:'Đối soát ngân hàng', exact:true}).click();
