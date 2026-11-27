@@ -1,6 +1,29 @@
 # ZentraSpace
 
-Bản chạy thử cục bộ cho chủ trọ một tòa. Luồng chính gồm chuẩn bị phòng và phí, tiếp nhận người thuê, lưu hợp đồng, chốt công tơ, phát hành bảng kê, chia sẻ riêng và theo dõi công nợ.
+ZentraSpace là ứng dụng quản lý nhiều dãy trọ. Chủ trọ có thể chuẩn bị phòng và phí, tiếp nhận người thuê, lưu hợp đồng, chốt điện nước, chia sẻ bảng kê riêng và theo dõi công nợ.
+
+## Giao diện minh họa
+
+Ảnh chụp từ phiên bản chạy trên Docker với dữ liệu giả lập.
+
+![Tổng quan kỳ thu với việc cần làm, trạng thái phòng và tiến độ chốt kỳ](docs/screenshots/tong-quan.png)
+
+<details>
+<summary>Xem bản đồ dãy trọ, lịch sử hợp đồng và cấu hình SMTP</summary>
+
+**Dãy trọ và bản đồ**
+
+![Danh sách dãy trọ và vị trí minh họa được ghim trên bản đồ](docs/screenshots/day-tro-ban-do.png)
+
+**Lịch sử hợp đồng của phòng**
+
+![Màn tra cứu hợp đồng theo tháng, tách khỏi hồ sơ phòng đang dùng](docs/screenshots/lich-su-hop-dong.png)
+
+**SMTP dùng chung**
+
+![Biểu mẫu cấu hình SMTP với máy chủ, cổng, kiểu mã hóa và địa chỉ gửi](docs/screenshots/cau-hinh-smtp.png)
+
+</details>
 
 ## Chạy trên Windows với Docker Desktop
 
@@ -18,9 +41,13 @@ Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để n
 
 Trên máy tính, bấm nút cạnh logo ZentraSpace ở góc trên bên trái để thu gọn hoặc mở rộng thanh bên. Chế độ thu gọn chỉ hiện biểu tượng. Trình duyệt ghi nhớ lựa chọn khi bạn chuyển trang hoặc tải lại. Trên điện thoại, bấm **Menu quản lý** để mở hoặc đóng danh sách.
 
-Tạo **Dãy trọ** bằng tên, địa chỉ và số phòng tối đa, rồi chọn **Xem phòng** để tạo hoặc lọc phòng thuộc dãy. Nút **Mở bản đồ** dùng địa chỉ hoặc tọa độ đã lưu và mở OpenStreetMap. Phòng cũ có thể được gán dãy từ màn chỉnh sửa.
+Tạo **Dãy trọ** bằng tên, địa chỉ và số phòng tối đa. Mở **Chọn vị trí trên bản đồ** để ghim trực tiếp hoặc bấm **Dùng vị trí hiện tại** và cấp quyền cho trình duyệt. Sau khi lưu, **Xem vị trí** hiển thị bản đồ trong ứng dụng. **Sửa vị trí** mở bản đồ với điểm đã lưu hoặc cho phép ghim điểm đầu tiên. Có thể nhập tọa độ thủ công hoặc dùng phím mũi tên dịch bản đồ và bấm **Ghim tâm**. Chọn **Xem phòng** để tạo hoặc lọc phòng thuộc dãy. [Chính sách sử dụng ô bản đồ OpenStreetMap](https://operations.osmfoundation.org/policies/tiles/)
+
+Mở **Chi tiết** từ danh sách dãy để xem địa chỉ, số phòng đã tạo, số phòng đang thuê và số phòng trống. Chọn **Sửa thông tin** để đổi tên và số phòng tối đa. Chủ trọ có thể chọn **Xóa dãy trọ** ở cuối trang chi tiết sau khi đã chuyển hoặc xóa hết phòng trong dãy. Trong chi tiết phòng, mục **Xóa phòng** áp dụng cho phòng chưa có người thuê, hợp đồng, chỉ số, bảng kê hoặc giao dịch. Khi xác nhận xóa, hệ thống bỏ cả ảnh và các mẫu phí chưa sử dụng của phòng đó.
 
 Tạo **Mẫu giá và phí** để dùng lại tiền thuê, đơn giá điện nước và một khoản phí định kỳ. Khi gán mẫu, phòng nhận một bản sao các mức giá và phí. Phòng đặc biệt có thể nhập giá riêng hoặc thêm khoản thu riêng. Trong hồ sơ phòng, chủ trọ có thể lưu một ảnh JPG hoặc PNG tối đa 2 MB, ghi người ở cùng và ngày vào hoặc rời phòng. Ảnh được mã hóa theo tổ chức. **Lịch sử phòng** tổng hợp hợp đồng, thay đổi người ở, bảng kê, thu tiền và các giao dịch cọc đã ghi.
+
+Hồ sơ chính chỉ hiển thị hợp đồng của kỳ đang xem và tối đa tám hoạt động trong kỳ. Mở **Xem tất cả hợp đồng** để tra cứu hợp đồng và tệp của các kỳ khác, hoặc **Mở lịch sử phòng** để lọc nhật ký theo tháng và loại hoạt động. Mỗi trang lịch sử tải tối đa 12 dòng. Dữ liệu nguồn vẫn nằm trong sổ mã hóa của tổ chức.
 
 Để sửa một khoản thu hoặc ghi giảm nhập sai, mở **Lịch sử giao dịch**, chọn **Đảo bút toán** và nhập lý do. Lịch sử giữ cả hai bút toán và mã tham chiếu chứng từ gốc. Khoản thu đã ghép sao kê cần kiểm tra lại giao dịch ngân hàng trước khi điều chỉnh.
 
@@ -32,6 +59,10 @@ Khi có khách, chọn **Tiếp nhận người thuê**. Giá mặc định lấ
 
 Để đổi người đại diện hoặc đơn giá, chọn **Thêm hợp đồng** trong hồ sơ phòng. Hợp đồng có hiệu lực tính phí từ ngày đầu tháng đã chọn. Bảng kê nháp dùng điều khoản của kỳ tương ứng. Bảng kê đã phát hành giữ nguyên nội dung.
 
+Trong **Phòng và hợp đồng**, mục **Hợp đồng sắp hết hạn** hiển thị các hợp đồng kết thúc trong 60 ngày tới. Chọn **Ký lại** để mở form với kỳ hiệu lực tiếp theo. Hợp đồng đã trả phòng hoặc đã có hợp đồng tiếp nối sẽ được bỏ qua.
+
+Ghi chỉ số bàn giao cuối kỳ ở **Nhập điện nước**, sau đó mở **Trả phòng và tất toán** từ hồ sơ phòng. Ngày trả mặc định là hôm nay theo giờ Việt Nam. Xem chỉ số và các khoản tiền rồi xác nhận số cọc thực hoàn hoặc cấn vào bảng kê cuối. Bảng kê cuối chưa phát hành tính tiền thuê theo số ngày từ đầu kỳ tới hết ngày trả. Bảng kê đã phát hành giữ nguyên. Sổ thu chi ghi cấn cọc riêng với dòng tiền. Danh sách phòng và dãy cập nhật trạng thái trống ngay sau xác nhận. Hợp đồng mới có thể bắt đầu từ kỳ kế tiếp và lịch sử vẫn tra cứu được.
+
 Phòng không có hợp đồng hiệu lực được bỏ khỏi hàng chờ chốt chỉ số. Nếu cho thuê lại sau một kỳ trống, Chủ trọ nhập số lúc bàn giao và số cuối kỳ trong **Nhập điện nước**. Nếu thay công tơ điện hoặc nước giữa kỳ, ghi số cuối công tơ cũ, số đầu công tơ mới, số cuối kỳ và lý do. Bảng kê cho thấy sản lượng của hai đoạn cộng lại. Lý do lưu trong màn quản lý và chỉ số đã phát hành được khóa.
 
 Trong **Chốt kỳ thu**, mở **Hạn thanh toán và phí chung** để đặt hạn thu và một khoản phí chung cho từng phòng. Bảng kê hiển thị khoản phí thành dòng riêng. Thay đổi chỉ áp dụng cho bảng kê chưa phát hành. Khi thu tiền, chọn tiền mặt hoặc chuyển khoản và nhập mã chứng từ nếu có.
@@ -42,11 +73,15 @@ Mở **Thu chi và cọc** để ghi chi theo danh mục, nhận hoặc hoàn c�
 
 Để thử chia sẻ, tạo link trên bảng kê đã phát hành. Mở link bằng một phiên trình duyệt riêng trên cùng máy và nhập mã dùng một lần. Trong bản chạy thử, chủ trọ trao mã thủ công qua kênh đã xác nhận với người thuê. Lời nhắc được sao chép không chứa mã hoặc số tiền. Có thể thu hồi link ngay cả khi người thuê đang có phiên xem.
 
+Đăng nhập bằng tài khoản `owner` mặc định rồi mở **Cấu hình → Email xác minh qua SMTP**. Điền máy chủ, cổng, kiểu TLS, địa chỉ gửi và thông tin đăng nhập nếu cần. Chọn **Lưu và bật SMTP** rồi dùng **Kiểm tra kết nối đã lưu**. Cấu hình dùng chung cho các tổ chức, có hiệu lực ngay và được mã hóa trong PostgreSQL. Các chủ trọ khác thấy trạng thái bật hoặc tắt. SMTP chỉnh từ giao diện kết nối tới địa chỉ công khai, hoặc máy chủ và cổng đã được khai báo trong `ZS_SMTP_ADDRESS`. Cấu hình `ZS_SMTP_*` trong `.env` vẫn dùng làm mặc định khi chưa có cấu hình được lưu từ giao diện.
+
+Lưu địa chỉ người nhận tại **Hợp đồng → Email xác minh bảng kê** rồi chọn **Tạo link và gửi mã qua email** trên bảng kê. Email chỉ chứa mã xác minh. Chủ trọ chia sẻ link riêng qua Zalo hoặc kênh đã thống nhất. Dùng origin HTTPS khi gửi cho người thuê thật.
+
 ## VietQR và đối soát sao kê
 
 Khi đặt tài khoản nhận tiền, chọn ngân hàng theo tên. PostgreSQL giữ danh mục tham chiếu được nạp khi chạy migration. Go tự tìm mã định danh và tạo VietQR. Danh mục hiện lấy từ ảnh chụp dữ liệu ngày 27/11/2026. [API danh mục VietQR](https://www.vietqr.io/api-bank)
 
-Chủ trọ mở **Đối soát ngân hàng**, nhập mã BIN, số tài khoản và tên chủ tài khoản đã kiểm tra. VietQR được tạo ngay trên máy chủ ZentraSpace và chỉ hiện trên bảng kê đã xác minh còn số tiền phải trả. Sau khi ghi thu một phần, mã dùng số tiền còn lại và giữ nguyên nội dung chuyển khoản của bảng kê. Khi đổi BIN hoặc số tài khoản, ứng dụng thu hồi link cũ. Kiểm tên thụ hưởng trên ứng dụng ngân hàng trước khi xác nhận bất kỳ chuyển khoản thật nào. [Chuyển nhanh qua VietQR của NAPAS](https://napas.com.vn/dich-vu-chuyen-tien-nhanh-napas-247)
+Chủ trọ mở **Đối soát ngân hàng**, chọn ngân hàng theo tên rồi nhập số tài khoản và tên chủ tài khoản đã kiểm tra. VietQR được tạo ngay trên máy chủ ZentraSpace và chỉ hiện trên bảng kê đã xác minh còn số tiền phải trả. Sau khi ghi thu một phần, mã dùng số tiền còn lại và giữ nguyên nội dung chuyển khoản của bảng kê. Khi đổi ngân hàng hoặc số tài khoản, ứng dụng thu hồi link cũ. Kiểm tên thụ hưởng trên ứng dụng ngân hàng trước khi xác nhận bất kỳ chuyển khoản thật nào. [Chuyển nhanh qua VietQR của NAPAS](https://napas.com.vn/dich-vu-chuyen-tien-nhanh-napas-247)
 
 Để đối soát, dán các giao dịch tiền vào của tài khoản đang chọn theo mẫu `ma_giao_dich,ngay,so_tien,noi_dung`. Ngày theo YYYY-MM-DD, số tiền VND nguyên dương và mã lấy từ sao kê ngân hàng. Khi nội dung có một mã bảng kê xác định, hệ thống chỉ gợi ý phòng và kỳ. Chủ trọ kiểm rồi chọn ghi khoản thu mới hoặc ghép với khoản thu cùng số tiền đã ghi. Nhập lại và duyệt lại cùng giao dịch giữ nguyên công nợ. Sao kê, tài khoản và liên kết đối soát được lưu trong sổ mã hóa hiện có.
 
@@ -62,8 +97,8 @@ Webhook mô phỏng xác minh HMAC và thời gian gửi, ghi theo tài khoản 
 
 - Giao diện dùng Next.js App Router, TypeScript, Mantine và Lucide React. Docker Compose dựng frontend riêng trên Node.js, chỉ mở cổng Go ra trình duyệt. Go xác thực, phân quyền, xử lý form và chuyển dữ liệu đã chọn theo màn hình đến frontend để dựng HTML. PostgreSQL lưu dữ liệu nghiệp vụ đã mã hoá. [Quyết định frontend](docs/decisions/001-frontend-stack.md)
 - Sổ thử được lưu thành tài liệu mã hóa AES-256-GCM theo phạm vi tổ chức. Transaction khóa hàng khi thay đổi để giữ bất biến tài chính. PostgreSQL RLS giới hạn theo ngữ cảnh giao dịch, tài khoản DB chạy web không sở hữu bảng. Service migration giữ tài khoản bootstrap riêng. Mật khẩu đăng nhập được xác minh bằng bcrypt.
-- Bản này phục vụ một tòa với hai vai trò cục bộ. Phần lưu trữ hiện là sổ mã hóa theo tổ chức. Mô hình quan hệ đầy đủ cho timeline hợp đồng, phân quyền nhiều tòa, quản lý vòng đời khóa và audit triển khai thuộc các bước tiếp theo. Phiên đăng nhập và phiên xem link được tạo lại sau khi khởi động lại web.
-- Điện/nước dùng đơn giá đã được người quản lý xác nhận, chưa tự chọn biểu giá pháp lý. VietQR thử nghiệm và đối soát từ CSV dùng dữ liệu do chủ trọ cung cấp. Webhook ngân hàng, gửi mã xác minh tự động và gửi Zalo tự động vẫn thuộc phạm vi sau.
+- Mỗi tổ chức có thể quản lý nhiều dãy trọ với hai vai trò chủ trọ và nhân viên công tơ. Dữ liệu lưu trong sổ mã hóa theo tổ chức. Phân quyền theo từng dãy, quản lý vòng đời khóa và nhật ký truy cập hỗ trợ thuộc các bước tiếp theo. Phiên đăng nhập và phiên xem link được tạo lại sau khi khởi động lại web.
+- Điện/nước dùng đơn giá đã được người quản lý xác nhận, chưa tự chọn biểu giá pháp lý. VietQR thử nghiệm và đối soát từ CSV dùng dữ liệu do chủ trọ cung cấp. Kết nối SMTP cần cấu hình và nghiệm thu với nhà cung cấp thực tế. Webhook ngân hàng và gửi Zalo tự động vẫn thuộc phạm vi sau.
 - Compose mẫu chỉ mở trên loopback để thử bằng dữ liệu mẫu. Trước pilot có người thuê cần môi trường HTTPS, chọn kênh xác minh đã đăng ký, quản lý khóa và backup tách biệt, kiểm tra trên thiết bị thật và tổ chức hai kỳ đối chiếu. Tệp `.env` chứa riêng khóa và thông tin đăng nhập của máy này.
 
 ## Kiểm tra lại
