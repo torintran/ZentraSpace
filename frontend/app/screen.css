@@ -785,7 +785,7 @@ main.layout {
 }
 .with-sidebar {
   display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
 }
 .workspace-sidebar {
   background: var(--paper);
@@ -795,7 +795,36 @@ main.layout {
 .workspace-sidebar-desktop {
   position: sticky;
   top: 0;
+  inline-size: 232px;
   padding: 20px 12px;
+}
+.workspace-sidebar-desktop[data-collapsed='true'] {
+  inline-size: 64px;
+  padding-inline: 10px;
+}
+.workspace-sidebar-toggle {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-inline: 10px;
+  color: var(--primary);
+  background: var(--surface);
+  border-color: var(--line);
+}
+.workspace-sidebar-desktop[data-collapsed='true'] .workspace-sidebar-toggle,
+.workspace-sidebar-desktop[data-collapsed='true'] .workspace-links a {
+  justify-content: center;
+  padding-inline: 0;
+}
+.workspace-sidebar-desktop[data-collapsed='true'] .workspace-link-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .workspace-sidebar-mobile {
   display: none;
@@ -816,6 +845,7 @@ main.layout {
   text-decoration: none;
 }
 .workspace-links svg,
+.workspace-sidebar-toggle svg,
 .workspace-sidebar-mobile svg {
   flex: none;
 }

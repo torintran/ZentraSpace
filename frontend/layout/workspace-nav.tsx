@@ -10,6 +10,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { PageData } from '../screens/view';
+import { DesktopSidebar } from './desktop-sidebar';
 
 const navigation = [
   { tab: 'dashboard', label: 'Tổng quan', Icon: LayoutDashboard },
@@ -53,9 +54,10 @@ function WorkspaceLinks({ page }: { page: PageData }) {
             key={tab}
             href={href}
             aria-current={selected === tab ? 'page' : undefined}
+            title={label}
           >
             <Icon aria-hidden size={18} strokeWidth={1.9} />
-            <span>{label}</span>
+            <span className="workspace-link-label">{label}</span>
           </a>
         );
       })}
@@ -66,9 +68,9 @@ function WorkspaceLinks({ page }: { page: PageData }) {
 export function WorkspaceNav({ page }: { page: PageData }) {
   return (
     <aside className="workspace-sidebar">
-      <div className="workspace-sidebar-desktop">
+      <DesktopSidebar>
         <WorkspaceLinks page={page} />
-      </div>
+      </DesktopSidebar>
       <details className="workspace-sidebar-mobile">
         <summary>
           <Menu size={20} aria-hidden /> Menu quản lý

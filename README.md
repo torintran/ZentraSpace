@@ -16,7 +16,9 @@ Lệnh `docker compose exec web zentraspace seed-lease-demo 2026-11` bổ sung s
 
 Chọn kỳ thu ở đầu màn hình. Vào **Phòng và hợp đồng** để nhập một phòng hoặc dán CSV theo mẫu. Xem kết quả kiểm CSV trước khi lưu. Sang **Nhập điện nước** để ghi chỉ số cuối kỳ, sau đó vào **Chốt kỳ thu** để tạo bản nháp. Mở từng bảng kê, kiểm tiền và phát hành. Thao tác thu thiếu, thu dư, hoàn và ghi giảm đều có lịch sử. CSV công nợ tải được từ màn chốt kỳ.
 
-Dùng sidebar trên máy tính hoặc **Menu quản lý** trên điện thoại. Tạo **Dãy trọ** bằng tên, địa chỉ và số phòng tối đa, rồi chọn **Xem phòng** để tạo hoặc lọc phòng thuộc dãy. Nút **Mở bản đồ** dùng địa chỉ hoặc tọa độ đã lưu và mở OpenStreetMap. Phòng cũ có thể được gán dãy từ màn chỉnh sửa.
+Trên máy tính, bấm **Thu gọn** ở đầu thanh bên để chỉ hiện biểu tượng. Bấm biểu tượng mở ở cùng vị trí để hiện lại tên các mục. Trình duyệt ghi nhớ lựa chọn này khi bạn chuyển trang hoặc tải lại. Trên điện thoại, bấm **Menu quản lý** để mở hoặc đóng danh sách.
+
+Tạo **Dãy trọ** bằng tên, địa chỉ và số phòng tối đa, rồi chọn **Xem phòng** để tạo hoặc lọc phòng thuộc dãy. Nút **Mở bản đồ** dùng địa chỉ hoặc tọa độ đã lưu và mở OpenStreetMap. Phòng cũ có thể được gán dãy từ màn chỉnh sửa.
 
 Tạo **Mẫu giá và phí** để dùng lại tiền thuê, đơn giá điện nước và một khoản phí định kỳ. Khi gán mẫu, phòng nhận một bản sao các mức giá và phí. Phòng đặc biệt có thể nhập giá riêng hoặc thêm khoản thu riêng. Trong hồ sơ phòng, chủ trọ có thể lưu một ảnh JPG hoặc PNG tối đa 2 MB, ghi người ở cùng và ngày vào hoặc rời phòng. Ảnh được mã hóa theo tổ chức. **Lịch sử phòng** tổng hợp hợp đồng, thay đổi người ở, bảng kê, thu tiền và các giao dịch cọc đã ghi.
 
