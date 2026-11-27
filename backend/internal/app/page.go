@@ -12,6 +12,9 @@ type RoomView struct {
 	HasPhoto   bool
 }
 type Page struct {
+	MeterStaffNamePrefix                                                      string
+	MeterStaff                                                                []MeterStaffView
+	StaffChanges                                                              []StaffChange
 	AvailableCredit                                                           int64
 	CreditTargets                                                             []CreditTarget
 	CreditTransfers                                                           []CreditTransferView

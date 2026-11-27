@@ -33,6 +33,8 @@ ZentraSpace là ứng dụng quản lý nhiều dãy trọ. Chủ trọ có th�
 
 Màn đăng nhập có hai lựa chọn mặc định **Chủ trọ** và **Nhân viên công tơ**. Chọn **Tài khoản khác** để nhập tên đăng nhập do người quản lý cấp. Có thể cấp thêm tài khoản qua biến `ZS_STAFF_ACCOUNTS` chứa mảng JSON với các trường `Username`, `Organization`, `Role` và `Password`. Mỗi tài khoản gắn với một tổ chức và vai trò `owner` hoặc `meter`. Tổ chức khác có sổ phòng, công nợ và tài khoản ngân hàng riêng.
 
+Chủ trọ vào **Cấu hình → Nhân viên công tơ** để tạo tài khoản và chọn một hoặc nhiều dãy được giao. Nhân viên đăng nhập bằng tên đầy đủ dạng `ma-to-chuc/ten-tai-khoan` hiển thị trên màn cấu hình. Hệ thống thu hồi phiên cũ khi đổi phạm vi, đặt lại mật khẩu hoặc tắt tài khoản. Chủ trọ xem được các thay đổi gần đây.
+
 Để nạp dữ liệu giả lập cho kỳ 11/2026, chạy `docker compose exec web zentraspace seed-demo 2026-11` rồi mở **Tổng quan** và chọn kỳ đó. Bốn phòng `DEMO-` lần lượt có bảng kê đã thu đủ, đã thu một phần, đang nháp và chưa nhập công tơ. Chạy lại cùng kỳ giữ nguyên các phòng demo đã tạo. Lệnh nạp chỉ chạy ở chế độ HTTP cục bộ.
 
 Lệnh `docker compose exec web zentraspace seed-lease-demo 2026-11` bổ sung sáu phòng `HD-MAU-` với giá thuê và chỉ số giả lập, hợp đồng 6, 12 và 18 tháng, hai phòng ký lại, cùng bảng kê nhiều kỳ. Chạy lại cùng kỳ giữ nguyên dữ liệu demo đã tạo.

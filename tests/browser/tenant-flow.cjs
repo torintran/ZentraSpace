@@ -550,6 +550,71 @@ async function checkPaymentCredits(owner) {
   console.log('PASS Playwright: carry credit to the next bill and reverse with balanced debt');
 }
 
+async function checkManagedMeterStaff(browser, owner) {
+  await owner.goto(`${app}/?tab=settings`);
+  const csrf = await owner.locator('input[name=csrf]').first().inputValue();
+  const origin = {Origin:app};
+  const sites = [];
+  const rooms = [];
+  for (const suffix of ['A','B']) {
+    const site = await owner.request.post(`${app}/action/site`, {headers:origin,form:{csrf,period,name:`Dãy phân quyền ${suffix} ${roomName}`,capacity:'2'},maxRedirects:0});
+    assert.equal(site.status(),303);
+    const siteID = new URL(site.headers().location,app).searchParams.get('site');
+    sites.push(siteID);
+    const name = `${roomName}-PHAN-QUYEN-${suffix}`;
+    const createRoom = await owner.request.post(`${app}/action/room`, {headers:origin,form:{csrf,period,name,site:siteID,tenant:`Khách mật ${suffix}`,rent:'2000000',electricRate:'3500',waterRate:'15000',electric:'0',water:'0'},maxRedirects:0});
+    assert.equal(createRoom.status(),303);
+    await owner.goto(`${app}/?tab=rooms&period=${period}&site=${siteID}`);
+    const href = await owner.getByRole('link',{name:`Xem chi tiết phòng ${name}`,exact:true}).getAttribute('href');
+    rooms.push({name,id:new URL(href,app).pathname.split('/').at(-1)});
+  }
+  await owner.goto(`${app}/?tab=settings`);
+  const panel = owner.locator('#meter-staff');
+  await panel.getByText('Thêm nhân viên công tơ',{exact:true}).click();
+  const form = panel.locator('form[action="/action/staff-save"]').last();
+  const username = 'meter-' + roomName.toLowerCase();
+  const password = 'only-a-synthetic-staff-password';
+  await fields(form,{username,password});
+  await form.locator(`input[name=site][value="${sites[0]}"]`).check();
+  await form.getByRole('button',{name:'Tạo tài khoản công tơ'}).click();
+  await owner.getByRole('status').filter({hasText:'Đã lưu tài khoản công tơ'}).waitFor();
+  assert.ok(!(await owner.content()).includes(password));
+  const row = panel.locator('details').filter({hasText:`local-pilot/${username}`});
+  const context = await browser.newContext();
+  try {
+    const meter = await context.newPage();
+    const login = async () => meter.request.post(`${app}/login`, {headers:origin,form:{account:`local-pilot/${username}`,password,profile:'other'},maxRedirects:0});
+    assert.equal((await login()).status(),303);
+    await meter.goto(`${app}/?tab=meters&period=${period}&site=${sites[1]}`);
+    const meterTable = meter.locator('.meter-row');
+    await meterTable.filter({hasText:rooms[0].name}).waitFor();
+    assert.equal(await meterTable.filter({hasText:rooms[1].name}).count(),0);
+    assert.ok(!(await meter.content()).includes('Khách mật A'));
+    const token = await meter.locator('input[name=csrf]').first().inputValue();
+    const write = (room, token) => meter.request.post(`${app}/action/read`, {headers:origin,form:{csrf:token,period,id:room.id,electric:'1',water:'2'},maxRedirects:0});
+    assert.equal((await write(rooms[0],token)).status(),303);
+    assert.equal((await write(rooms[1],token)).status(),403);
+    await row.locator('summary').click();
+    await row.locator(`input[name=site][value="${sites[0]}"]`).uncheck();
+    await row.locator(`input[name=site][value="${sites[1]}"]`).check();
+    await row.getByRole('button',{name:'Lưu quyền công tơ'}).click();
+    await owner.getByRole('status').filter({hasText:'Đã lưu tài khoản công tơ'}).waitFor();
+    assert.equal((await meter.request.get(`${app}/?tab=meters`,{maxRedirects:0})).headers().location,'/login');
+    assert.equal((await login()).status(),303);
+    await meter.goto(`${app}/?tab=meters&period=${period}`);
+    await meterTable.filter({hasText:rooms[1].name}).waitFor();
+    assert.equal(await meterTable.filter({hasText:rooms[0].name}).count(),0);
+    await row.locator('summary').click();
+    await row.locator('input[name=enabled]').uncheck();
+    await row.getByRole('button',{name:'Lưu quyền công tơ'}).click();
+    await owner.getByRole('status').filter({hasText:'Đã lưu tài khoản công tơ'}).waitFor();
+    assert.equal((await login()).status(),401);
+  } finally {
+    await context.close();
+  }
+  console.log('PASS Playwright: managed meter account scopes reads and writes, revokes stale sessions and disables login');
+}
+
 async function run() {
   assert.ok(password, 'The test environment requires an owner password.');
   const channel = process.env.ZS_BROWSER_CHANNEL;
@@ -764,6 +829,7 @@ async function run() {
     await checkImportUpload(owner);
     await checkSiteMeterReview(owner);
     await checkPaymentCredits(owner);
+    await checkManagedMeterStaff(browser, owner);
   } finally {
     await browser.close();
   }

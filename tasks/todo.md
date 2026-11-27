@@ -27,7 +27,7 @@ Trạng thái ngày 27/11/2026. Cột **Sau** ghi phụ thuộc trực tiếp. C
 | Mã | Việc | Sau | Nghiệm thu và kiểm tra |
 | --- | --- | --- | --- |
 | F01 | [x] Tạo môi trường phát triển tối thiểu | G03 | Docker dựng cổng Go, frontend Next.js và PostgreSQL từ DB trống. CI chạy Go test, build, migration và smoke test HTTP với dữ liệu tổng hợp. |
-| F02 | [ ] Đăng nhập và cô lập tổ chức | F01 | Đã gắn tài khoản với sổ theo tổ chức và kiểm hai chủ trọ qua phòng, bảng kê, CSV, ghi thu, ngân hàng và link riêng. Còn quyền nhiều tòa trong một tổ chức, quản trị tài khoản và audit truy cập hỗ trợ. |
+| F02 | [ ] Đăng nhập và cô lập tổ chức | F01 | Có cô lập nhiều tổ chức, cấp tài khoản công tơ theo dãy, thu hồi phiên khi đổi quyền và nhật ký sửa quyền. Còn vai trò quản lý tài chính theo dãy và audit truy cập hỗ trợ. |
 | F03 | [x] Quản lý dãy và danh sách phòng | F02 | Tạo và sửa dãy, ghim bản đồ, tìm và lọc phòng, kiểm mã phòng theo dãy, giới hạn sức chứa, xóa phòng chưa dùng và kiểm quyền theo tổ chức. |
 | F04 | [ ] Ghi hợp đồng và đại diện | F03 | Có ngày vào/ra giữa tháng, tính tiền thuê theo ngày và ghi chỉ số điện nước lúc bàn giao. Còn hỗ trợ hai hợp đồng nối tiếp trong cùng tháng và phân đoạn công tơ tương ứng. |
 | F05 | [ ] Chuyển dữ liệu đầu kỳ có hỗ trợ | F04 | Nhập bảng do pilot cung cấp, báo lỗi từng dòng, đối chiếu số phòng/hợp đồng/chỉ số/số dư mở. Chạy lại cùng lần nhập giữ số bản ghi; lưu biên bản đối chiếu. |

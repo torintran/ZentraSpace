@@ -72,6 +72,8 @@ type Invite struct {
 	PendingDelivery         bool `json:",omitempty"`
 }
 type Book struct {
+	MeterStaff         []MeterStaff  `json:",omitempty"`
+	StaffChanges       []StaffChange `json:",omitempty"`
 	CreditTransfers    []CreditTransfer
 	SiteMeterReadings  []SiteMeterReading
 	SiteMeterApprovals []SiteMeterApproval

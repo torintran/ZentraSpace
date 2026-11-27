@@ -29,6 +29,10 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	period := periodOf(r.Form.Get("period"))
+	if action == "staff-save" {
+		a.saveManagedStaff(w, r, s)
+		return
+	}
 	if action == "room-delete" {
 		a.deleteRoom(w, r, s.organization, period)
 		return
@@ -371,6 +375,13 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{err}
 			}
 		case "read", "read-special":
+			if s.staffRevision != "" {
+				account, valid := s.managedMeterStaff(b)
+				room := b.room(id)
+				if !valid || room == nil || !slices.Contains(account.SiteIDs, room.SiteID) {
+					return errMeterAccess
+				}
+			}
 			next = "/?tab=meters&saved=1&period=" + period
 			if value("filter") == "missing" {
 				next += "&filter=missing"

@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"slices"
 	"time"
 )
 
@@ -33,6 +34,20 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.SMTP = settings
+		p.MeterStaffNamePrefix = s.organization + "/"
+		if err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
+			p.Sites = b.siteViews(period)
+			for _, account := range b.MeterStaff {
+				p.MeterStaff = append(p.MeterStaff, MeterStaffView{Username: account.Username, Revision: account.Revision, SiteIDs: account.SiteIDs, Disabled: account.Disabled})
+			}
+			start := max(0, len(b.StaffChanges)-10)
+			p.StaffChanges = slices.Clone(b.StaffChanges[start:])
+			slices.Reverse(p.StaffChanges)
+			return nil
+		}); err != nil {
+			a.problem(w, r, err)
+			return
+		}
 		switch r.URL.Query().Get("saved") {
 		case "smtp":
 			p.Message = "Đã lưu SMTP cho toàn hệ thống."
@@ -40,6 +55,8 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			p.Message = "Kết nối và xác thực SMTP thành công."
 		case "smtp-disabled":
 			p.Message = "Đã tắt gửi mã qua SMTP."
+		case "meter-staff":
+			p.Message = "Đã lưu tài khoản công tơ."
 		}
 		a.page(w, r, p)
 		return
@@ -63,6 +80,10 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		p.Message = "Đã xóa phòng."
 	}
 	if err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
+		meter, valid := s.managedMeterStaff(b)
+		if !valid {
+			return errMeterAccess
+		}
 		if tab == "dashboard" {
 			p.Dashboard = b.dashboard(period)
 			return nil
@@ -97,6 +118,9 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 		for _, room := range b.Rooms {
+			if meter != nil && !slices.Contains(meter.SiteIDs, room.SiteID) {
+				continue
+			}
 			if tab == "rooms" && p.SelectedSite != "" && room.SiteID != p.SelectedSite {
 				continue
 			}

@@ -1,17 +1,19 @@
 package app
 
 import (
-	"golang.org/x/crypto/bcrypt"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type session struct {
 	role, organization string
 	username           string
+	staffRevision      string
 	expires            time.Time
 	platformAdmin      bool
 }
@@ -57,7 +59,7 @@ func (a *App) allow(key string, n int, span time.Duration) bool {
 	a.limits[key] = v
 	return true
 }
-func (a *App) newSession(role, org, username string, d time.Duration, platformAdmin bool) string {
+func (a *App) newSession(s session, d time.Duration) string {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for k, v := range a.sessions {
@@ -66,7 +68,8 @@ func (a *App) newSession(role, org, username string, d time.Duration, platformAd
 		}
 	}
 	id := token()
-	a.sessions[hash(id)] = session{role: role, organization: org, username: username, expires: time.Now().Add(d), platformAdmin: platformAdmin}
+	s.expires = time.Now().Add(d)
+	a.sessions[hash(id)] = s
 	return id
 }
 func (a *App) getSession(r *http.Request, name string) (session, string) {
@@ -110,6 +113,23 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		username = ""
 	}
 	account, known := a.accounts[username]
+	staffName, staffRevision := username, ""
+	if !known && a.store != nil {
+		org, user, scoped := strings.Cut(username, "/")
+		if scoped && accountIdentifier.MatchString(org) && accountIdentifier.MatchString(user) {
+			err := a.store.book(r.Context(), org, false, func(b *Book) error {
+				if staff := b.meterStaff(user); staff != nil && !staff.Disabled {
+					account, known = staffLogin{organization: org, role: "meter", passwordHash: staff.PasswordHash}, true
+					staffName, staffRevision = user, staff.Revision
+				}
+				return nil
+			})
+			if err != nil {
+				a.problem(w, r, err)
+				return
+			}
+		}
+	}
 	if !known {
 		account = a.accounts["owner"]
 	}
@@ -117,7 +137,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		a.page(w, r, Page{Screen: "login", Status: http.StatusUnauthorized, Error: "Kiểm tra lại tài khoản hoặc mật khẩu.", LoginProfile: profile})
 		return
 	}
-	id := a.newSession(account.role, account.organization, username, 8*time.Hour, username == "owner" && account.organization == pilotOrg)
+	id := a.newSession(session{role: account.role, organization: account.organization, username: staffName, staffRevision: staffRevision, platformAdmin: username == "owner" && account.organization == pilotOrg}, 8*time.Hour)
 	a.cookie(w, "zs_staff", id, "/", 8*3600)
 	http.Redirect(w, r, "/", 303)
 }
@@ -127,6 +147,21 @@ func (a *App) staff(w http.ResponseWriter, r *http.Request) (session, string, bo
 	if s.role != "owner" && s.role != "meter" {
 		http.Redirect(w, r, "/login", 303)
 		return s, id, false
+	}
+	if s.staffRevision != "" {
+		valid := false
+		if err := a.store.book(r.Context(), s.organization, false, func(b *Book) error { _, valid = s.managedMeterStaff(b); return nil }); err != nil {
+			a.problem(w, r, err)
+			return s, id, false
+		}
+		if !valid {
+			a.mu.Lock()
+			delete(a.sessions, hash(id))
+			a.mu.Unlock()
+			a.cookie(w, "zs_staff", "", "/", -1)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return s, id, false
+		}
 	}
 	return s, id, true
 }

@@ -122,6 +122,10 @@ type inputError struct{ error }
 
 func (a *App) problem(w http.ResponseWriter, r *http.Request, err error) {
 	var user inputError
+	if errors.Is(err, errMeterAccess) {
+		http.Error(w, errMeterAccess.Error(), http.StatusForbidden)
+		return
+	}
 	if errors.Is(err, errMissing) {
 		http.Error(w, errMissing.Error(), 404)
 		return

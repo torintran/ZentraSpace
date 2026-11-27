@@ -231,6 +231,9 @@ type Dashboard = {
     | null;
 };
 export type PageData = {
+  MeterStaffNamePrefix: string;
+  MeterStaff: { Username: string; Revision: string; SiteIDs: string[]; Disabled: boolean }[] | null;
+  StaffChanges: { Username: string; Actor: string; Operation: string; At: string }[] | null;
   AvailableCredit: number;
   CreditTargets: { ID: string; Period: string; Remaining: number }[] | null;
   CreditTransfers: { Key: string; TargetID: string; TargetPeriod: string; Amount: number; Date: string; Note: string; Reversed: boolean }[] | null;

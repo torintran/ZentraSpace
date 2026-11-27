@@ -25,7 +25,7 @@ export function LoginScreen({ page }: { page: PageData }) {
           className="login-account-name"
           label="Tên đăng nhập"
           name="account"
-          maxLength={40}
+          maxLength={81}
           autoComplete="username"
           size="md"
         />

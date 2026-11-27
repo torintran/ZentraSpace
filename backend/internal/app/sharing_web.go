@@ -47,6 +47,6 @@ func (a *App) verify(w http.ResponseWriter, r *http.Request) {
 		a.page(w, r, Page{Screen: "verify", InviteID: route, Error: "Mã không hợp lệ hoặc lời mời đã hết hạn. Hãy liên hệ người quản lý."})
 		return
 	}
-	a.cookie(w, "zs_reader", a.newSession("share:"+route, org, "", 30*time.Minute, false), "/p/"+route, 1800)
+	a.cookie(w, "zs_reader", a.newSession(session{role: "share:" + route, organization: org}, 30*time.Minute), "/p/"+route, 1800)
 	http.Redirect(w, r, "/p/"+route, 303)
 }
