@@ -8,8 +8,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	qrcode "github.com/skip2/go-qrcode"
+	"golang.org/x/text/unicode/norm"
 )
 
 type BankScreen struct {
@@ -21,6 +23,8 @@ type BankScreen struct {
 	Next, Previous               int
 	HasNext, HasPrevious         bool
 	MockAvailable, MockAutoMatch bool
+	Search                       string
+	Matches                      int
 }
 type TransferReview struct {
 	Transfer  BankTransfer
@@ -58,7 +62,12 @@ func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
 	if offset < 0 || offset > 3000 {
 		offset = 0
 	}
-	screen := &BankScreen{Reviewed: query.Get("status") == "reviewed", Previous: max(0, offset-pageSize), HasPrevious: offset > 0}
+	search := strings.TrimSpace(query.Get("q"))
+	if len([]rune(search)) > 120 {
+		search = string([]rune(search)[:120])
+	}
+	words := strings.Fields(bankSearchText(search))
+	screen := &BankScreen{Reviewed: query.Get("status") == "reviewed", Search: search}
 	options, err := a.store.bankOptions(r.Context())
 	if err != nil {
 		a.problem(w, r, err)
@@ -88,22 +97,20 @@ func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
 		screen.MockAvailable = org == pilotOrg && len(a.mockBankSecret) >= 32 &&
 			b.Bank.BIN == mockBankBIN && b.Bank.Account == mockBankAccount
 		screen.MockAutoMatch = screen.MockAvailable && b.MockBankAutoMatch
-		count := 0
+		matches := make([]BankTransfer, 0)
 		for j := len(b.Transfers) - 1; j >= 0; j-- {
 			tr := b.Transfers[j]
-			if (tr.InvoiceID != "") != screen.Reviewed {
+			if (tr.InvoiceID != "") != screen.Reviewed || !matchesBankSearch(tr, words) {
 				continue
 			}
-			if count >= offset+pageSize {
-				screen.HasNext = true
-				break
-			}
-			if count >= offset {
-				screen.Transfers = append(screen.Transfers, tr)
-			}
-			count++
+			matches = append(matches, tr)
 		}
-		screen.Next = offset + pageSize
+		screen.Matches = len(matches)
+		offset = min(offset/pageSize, max(0, len(matches)-1)/pageSize) * pageSize
+		end := min(len(matches), offset+pageSize)
+		screen.Transfers = matches[offset:end]
+		screen.HasNext, screen.HasPrevious = end < len(matches), offset > 0
+		screen.Next, screen.Previous = end, max(0, offset-pageSize)
 		return nil
 	})
 	if err != nil {
@@ -111,6 +118,32 @@ func (a *App) bankPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.page(w, r, p)
+}
+
+func bankSearchText(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case unicode.Is(unicode.Mn, r):
+			return -1
+		case r == 'đ':
+			return 'd'
+		default:
+			return r
+		}
+	}, norm.NFD.String(strings.ToLower(s)))
+}
+
+func matchesBankSearch(tr BankTransfer, words []string) bool {
+	if len(words) == 0 {
+		return true
+	}
+	text := bankSearchText(tr.Reference + " " + tr.Memo + " " + tr.Date + " " + strconv.FormatInt(tr.Amount, 10))
+	for _, word := range words {
+		if !strings.Contains(text, word) {
+			return false
+		}
+	}
+	return true
 }
 
 func (a *App) bankReview(w http.ResponseWriter, r *http.Request) {

@@ -494,10 +494,95 @@ async function checkSiteMeterReview(owner) {
   await fields(review,{note:'Điện cầu thang'});
   await review.getByRole('button',{name:'Duyệt chênh lệch'}).click();
   await master.getByText('Đã duyệt',{exact:true}).waitFor();
+  const otherSite = await owner.request.post(`${app}/action/site`, {headers:origin,
+    form:{csrf,period,name:'Dãy thứ hai ' + roomName,capacity:'2'},maxRedirects:0});
+  assert.equal(otherSite.status(),303);
+  const otherID = new URL(otherSite.headers().location,app).searchParams.get('site');
+  const otherCode = roomName + '-DAY-2';
+  const otherRoom = await owner.request.post(`${app}/action/room`, {headers:origin,
+    form:{csrf,period,name:otherCode,tenant:'Người thuê dãy hai',site:otherID,rent:'1900000',electricRate:'3000',waterRate:'10000',electric:'20',water:'4'},maxRedirects:0});
+  assert.equal(otherRoom.status(),303);
+  await owner.goto(`${app}/?tab=meters&period=${period}&site=${otherID}`);
+  assert.equal(await subMeter.count(),0);
+  const otherMeter = owner.locator('.meter-row').filter({hasText:otherCode});
+  await fields(otherMeter,{electric:'31',water:'7'});
+  await otherMeter.getByRole('button',{name:'Lưu chỉ số'}).click();
+  assert.equal(new URL(owner.url()).searchParams.get('site'),otherID);
   await owner.goto(`${app}/?tab=billing&period=${period}`);
+  await owner.getByLabel('Dãy trọ',{exact:true}).selectOption(siteID);
+  await owner.getByRole('button',{name:'Xem kỳ',exact:true}).click();
   await owner.getByRole('button',{name:'Tạo bảng kê nháp'}).click();
+  assert.equal(new URL(owner.url()).searchParams.get('site'),siteID);
   await owner.locator('article').filter({hasText:code}).getByRole('link',{name:'Xem bảng kê'}).waitFor();
+  await owner.goto(`${app}/?tab=billing&period=${period}&site=${otherID}`);
+  assert.equal(await owner.locator('article').filter({hasText:otherCode}).count(),0);
+  await owner.getByRole('button',{name:'Tạo bảng kê nháp'}).click();
+  await owner.locator('article').filter({hasText:otherCode}).getByRole('link',{name:'Xem bảng kê'}).waitFor();
+  assert.equal(await owner.locator('article').filter({hasText:code}).count(),0);
+  for (const [id, name] of [[siteID, code], [otherID, otherCode]]) {
+    await owner.goto(`${app}/?tab=billing&period=${period}&site=${id}&filter=draft`);
+    await owner.getByText('Phát hành nhiều bảng kê',{exact:true}).click();
+    const batch = owner.locator('form[action="/action/issue-batch"]');
+    await batch.getByRole('checkbox',{name:new RegExp(name)}).check();
+    await batch.getByRole('checkbox',{name:'Tôi đã kiểm tra các bảng kê đã chọn.'}).check();
+    await batch.getByRole('button',{name:'Phát hành bảng kê đã chọn'}).click();
+    assert.equal(new URL(owner.url()).searchParams.get('site'),id);
+  }
+  const exportURL = await owner.getByRole('link',{name:'Xuất công nợ',exact:true}).getAttribute('href');
+  const csv = await (await owner.request.get(new URL(exportURL, app).href)).text();
+  assert.ok(csv.includes(otherCode) && !csv.includes(code));
   console.log('PASS Playwright: common-area meter variance holds and releases only affected billing');
+}
+
+async function checkLargeBillingBatch(owner) {
+  await owner.goto(`${app}/?tab=rooms&period=${period}`);
+  const csrf = await owner.locator('input[name="csrf"]').first().inputValue();
+  const headers = {Origin:app};
+  const site = await owner.request.post(app + '/action/site', {headers, maxRedirects:0,
+    form:{csrf,period,name:'Dãy 105 phòng ' + roomName,capacity:'105'}});
+  assert.equal(site.status(),303);
+  const siteID = new URL(site.headers().location,app).searchParams.get('site');
+  const scope = `period=${period}&site=${siteID}`;
+  await owner.goto(`${app}/?tab=rooms&${scope}`);
+  await owner.getByText('Nhập danh sách phòng từ CSV hoặc Excel',{exact:true}).click();
+  const csv = [
+    'phong,nguoi_dai_dien,tien_thue,gia_dien,gia_nuoc,dien_dau,nuoc_dau',
+    ...Array.from({length:105}, (_, j) => `P${String(j+1).padStart(3,'0')},Người thuê mẫu,1000000,3000,10000,0,0`),
+  ].join('\n');
+  const importer = owner.locator('form[action="/action/import-file-preview"]');
+  await importer.locator('input[type=file]').setInputFiles({name:'day-105.csv',mimeType:'text/csv',buffer:Buffer.from(csv)});
+  await importer.getByRole('button',{name:'Kiểm tra danh sách'}).click();
+  await owner.getByRole('button',{name:'Lưu danh sách phòng'}).click();
+  await owner.goto(`${app}/?tab=meters&${scope}`);
+  const ids = await owner.locator('.meter-row input[name=id]').evaluateAll(inputs => inputs.map(input => input.value));
+  assert.equal(ids.length,105);
+  for (const id of ids) {
+    const saved = await owner.request.post(app+'/action/read',{headers,maxRedirects:0,
+      form:{csrf,id,period,electric:'10',water:'2'}});
+    assert.equal(saved.status(),303);
+  }
+  await owner.goto(`${app}/?tab=billing&${scope}&filter=draft`);
+  await owner.getByRole('button',{name:'Tạo bảng kê nháp'}).click();
+  await owner.getByText('Phát hành nhiều bảng kê',{exact:true}).click();
+  const batch = owner.locator('form[action="/action/issue-batch"]');
+  await owner.setViewportSize({width:320,height:720});
+  assert.equal(await owner.evaluate(() => document.documentElement.scrollWidth),320);
+  const selectPage = batch.getByRole('button',{name:'Chọn cả trang này'});
+  const nextPage = batch.getByRole('button',{name:'Trang sau'});
+  for (let j=0; j<4; j++) {
+    await selectPage.click();
+    await nextPage.click();
+  }
+  await selectPage.click();
+  await batch.getByRole('alert').filter({hasText:'Mỗi lô tối đa 100 bảng kê'}).waitFor();
+  assert.equal(await batch.locator('input[name=selected]').count(),100);
+  await batch.getByRole('status').filter({hasText:'Đã chọn 100/100 · Tổng 105.000.000 ₫'}).waitFor();
+  await batch.getByRole('checkbox',{name:'Tôi đã kiểm tra các bảng kê đã chọn.'}).check();
+  await batch.getByRole('button',{name:'Phát hành bảng kê đã chọn'}).click();
+  assert.equal(await owner.locator('article').count(),5);
+  await owner.getByRole('link',{name:'Còn phải thu',exact:true}).click();
+  assert.equal(await owner.locator('article').count(),100);
+  console.log('PASS Playwright: 105-room site, 100-bill cap, cross-page choice and 5 remaining drafts');
 }
 
 async function checkPaymentCredits(owner) {
@@ -747,7 +832,14 @@ async function run() {
     assert.equal(await sharePolicy.locator('[name="mode"]').inputValue(), 'days');
     await owner.goto(`${app}/?tab=meters&period=${period}`);
     const meter = owner.locator('.meter-row').filter({hasText:roomName});
+    const meterSearch = owner.getByRole('searchbox', {name:'Tìm theo mã phòng'});
+    await meterSearch.fill(roomName);
+    await meter.getByText('Đầu kỳ 0 kWh', {exact:true}).waitFor();
     await fields(meter, {electric:'10', water:'2'});
+    await meterSearch.fill('khong-co-phong-nay');
+    await meter.waitFor({state:'hidden'});
+    await meterSearch.fill(roomName);
+    assert.equal(await meter.locator('[name="electric"]').inputValue(), '10');
     await meter.getByRole('button', {name:'Lưu chỉ số'}).click();
     await owner.goto(`${app}/?tab=billing&period=${period}`);
     await owner.getByRole('button', {name:'Tạo bảng kê nháp'}).click();
@@ -756,6 +848,10 @@ async function run() {
     const invoiceURL = owner.url();
     await owner.getByRole('button', {name:'Phát hành bảng kê'}).click();
     await owner.getByText('Đã phát hành', {exact:true}).waitFor();
+
+    await owner.goto(`${app}/?tab=meters&period=${period}`);
+    await meter.getByText('Đã chốt', {exact:true}).waitFor();
+    assert.equal(await meter.getByRole('button', {name:'Lưu chỉ số'}).count(), 0);
 
     await owner.goto(roomURL);
     await owner.getByText('Hủy phí Phụ thu vệ sinh', {exact:true}).click();
@@ -792,7 +888,39 @@ async function run() {
     await mock.getByRole('button', {name:'Gửi giao dịch'}).click();
     await mock.getByRole('status').filter({hasText:'Đã nhận giao dịch'}).waitFor();
     await owner.goto(app + '/bank');
+    const filler = Array.from({length:24}, (_, j) =>
+      [reference + '-SAO-KE-' + j, '2026-11-26', 210000 + j, 'Tiền phòng dãy thử'].join(','));
+    await owner.getByLabel('Nội dung CSV').fill(['ma_giao_dich,ngay,so_tien,noi_dung', ...filler].join('\n'));
+    await owner.getByRole('button', {name:'Thêm vào hàng chờ'}).click();
+    await owner.getByRole('status').filter({hasText:'Đã thêm 24 giao dịch'}).waitFor();
+    assert.equal(await owner.locator('article').filter({hasText:reference})
+      .filter({hasNotText:'SAO-KE-'}).count(), 0, 'The target transfer starts beyond the first page.');
+    const transferSearch = owner.getByRole('searchbox', {name:'Tìm giao dịch'});
+    const submitSearch = owner.getByRole('button', {name:'Tìm giao dịch', exact:true});
+    await transferSearch.fill('tien phong day thu');
+    await submitSearch.click();
+    await owner.getByText('24 giao dịch', {exact:true}).waitFor();
+    await owner.getByRole('link', {name:'Trang sau'}).click();
+    assert.equal(await transferSearch.inputValue(), 'tien phong day thu');
+    assert.equal(await owner.getByRole('link', {name:'Duyệt giao dịch', exact:true}).count(), 4);
+    await transferSearch.fill(reference + ' 165000');
+    await submitSearch.click();
+    await owner.getByText('1 giao dịch', {exact:true}).waitFor();
     await owner.locator('article').filter({hasText:reference}).getByRole('link', {name:'Duyệt giao dịch'}).click();
+    const invoiceSearch = owner.getByRole('searchbox', {name:'Tìm mã phòng, người thuê hoặc kỳ'});
+    await invoiceSearch.fill('nguoi thue mo phong ' + period);
+    const candidate = owner.getByRole('combobox', {name:'Bảng kê đã phát hành'});
+    assert.equal(await candidate.locator('option').count(), 2);
+    assert.match(await candidate.locator('option:checked').textContent(), /Người thuê mô phỏng/);
+    const suggestedID = await candidate.inputValue();
+    await invoiceSearch.clear();
+    const otherID = await candidate.locator('option').evaluateAll((options, id) =>
+      options.find((option) => option.value && option.value !== id)?.value, suggestedID);
+    assert.ok(otherID);
+    await candidate.selectOption(otherID);
+    assert.equal(await owner.getByRole('button', {name:'Xác nhận đối soát'}).count(), 0);
+    await candidate.selectOption(suggestedID);
+    await owner.getByText('Nếu ghi khoản thu mới, còn phải thu 2.000.000 ₫.', {exact:true}).waitFor();
     await owner.getByLabel('Cách ghi nhận').selectOption('new');
     await owner.getByRole('checkbox', {name:'Tôi đã kiểm tra bảng kê và khoản thu.'}).check();
     await owner.getByRole('button', {name:'Xác nhận đối soát'}).click();
@@ -812,6 +940,18 @@ async function run() {
     await owner.getByText('Bút toán ghi chung cho phòng', {exact:true}).waitFor();
     await tenant.reload();
     assert.equal(await tenant.locator('.tenant-balance').textContent(), '1.900.000 ₫');
+    await owner.goto(`${app}/?tab=billing&period=${period}&filter=due`);
+    const billSearch = owner.getByRole('searchbox', {name:'Tìm theo mã phòng hoặc tên người thuê'});
+    await billSearch.fill('nguoi thue mo phong');
+    const billRow = owner.locator('article').filter({hasText:roomName});
+    await billRow.getByText('1.900.000 ₫', {exact:false}).waitFor();
+    await billSearch.fill('khong-co-bang-ke-nay');
+    await owner.getByRole('status').filter({hasText:'Không tìm thấy bảng kê.'}).waitFor();
+    assert.equal(await billRow.count(), 0);
+    await owner.getByRole('link', {name:'Quá hạn', exact:true}).click();
+    assert.equal(await owner.getByRole('link', {name:'Quá hạn', exact:true}).getAttribute('aria-current'), 'page');
+    assert.equal(await billRow.count(), 0, 'A bill without a due date is excluded from the overdue filter.');
+    await owner.goto(invoiceURL);
     assert.equal(await tenant.getByText('Người ở cùng giữa kỳ', {exact:true}).count(), 0);
     console.log('PASS Playwright: resident-day shares, named partial receipt, shared bank receipt and tenant privacy');
     await owner.getByText('Gửi bảng kê cá nhân', {exact:true}).click();
@@ -932,6 +1072,7 @@ async function run() {
     await checkSiteMeterReview(owner);
     await checkPaymentCredits(owner);
     await checkManagedMeterStaff(browser, owner);
+    await checkLargeBillingBatch(owner);
   } finally {
     await browser.close();
   }

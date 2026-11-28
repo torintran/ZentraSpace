@@ -64,6 +64,10 @@ type Room = {
   PolicyFee: number;
 };
 type RoomView = Room & {
+  MeterLocked: boolean;
+  OpeningUnavailable: boolean;
+  ElectricOpening: number;
+  WaterOpening: number;
   Done: boolean;
   Lease: Lease;
   HasLease: boolean;
@@ -193,6 +197,8 @@ type BankTransfer = {
   EntryKey: string;
 };
 type Bank = {
+  Search: string;
+  Matches: number;
   Account: BankAccount;
   Options: { BIN: string; Code: string; Name: string }[];
   BankName: string;

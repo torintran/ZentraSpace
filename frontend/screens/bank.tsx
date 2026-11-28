@@ -8,11 +8,18 @@ import {
   Panel,
 } from './components';
 import { configured, has, itemKey, money, randomKey, suffix } from './view';
-import type { PageData, Invoice } from './view';
+import type { PageData } from './view';
 
 export function BankScreen({ page }: { page: PageData }) {
   const bank = page.Bank;
   if (!bank) return null;
+  function listURL(reviewed: boolean, offset = 0, search = bank?.Search || '') {
+    const query = new URLSearchParams();
+    if (reviewed) query.set('status', 'reviewed');
+    if (offset) query.set('offset', String(offset));
+    if (search) query.set('q', search);
+    return '/bank' + (query.size ? '?' + query.toString() : '');
+  }
   return (
     <>
       <a className="back" href="/">
@@ -28,16 +35,29 @@ export function BankScreen({ page }: { page: PageData }) {
         <Panel className="card" as="section">
           <h2>Giao dịch tiền vào</h2>
           <nav className="tabs" aria-label="Trạng thái đối soát">
-            <a className={!has(bank.Reviewed) ? 'active' : ''} href="/bank">
+            <a className={!has(bank.Reviewed) ? 'active' : ''} href={listURL(false)}>
               Chờ duyệt
             </a>
             <a
               className={has(bank.Reviewed) ? 'active' : ''}
-              href="/bank?status=reviewed"
+              href={listURL(true)}
             >
               Đã đối soát
             </a>
           </nav>
+          <form method="get" action="/bank" className="form">
+            {bank.Reviewed && <input type="hidden" name="status" value="reviewed" />}
+            <label>
+              Tìm giao dịch
+              <FieldInput type="search" name="q" maxLength={120} defaultValue={bank.Search}
+                placeholder="Mã, nội dung, ngày hoặc số tiền" />
+            </label>
+            <div className="actions">
+              <Action className="secondary">Tìm giao dịch</Action>
+              {bank.Search && <ActionLink className="secondary" href={listURL(bank.Reviewed, 0, '')}>Xóa tìm kiếm</ActionLink>}
+            </div>
+          </form>
+          {bank.Matches > 0 && <p className="subtle">{bank.Matches} giao dịch</p>}
           <details>
             <summary>Ghi tiền mặt chưa phân bổ</summary>
             <form method="post" action="/bank/cash-receipt" className="form">
@@ -80,7 +100,7 @@ export function BankScreen({ page }: { page: PageData }) {
             ))
           ) : (
             <>
-              <p className="empty">Chưa có giao dịch trong mục này.</p>
+              <p className="empty">{bank.Search ? 'Không tìm thấy giao dịch khớp.' : 'Chưa có giao dịch trong mục này.'}</p>
             </>
           )}
           {has(has(bank.HasPrevious) || has(bank.HasNext)) ? (
@@ -90,11 +110,7 @@ export function BankScreen({ page }: { page: PageData }) {
                   <>
                     <ActionLink
                       className="button secondary"
-                      href={
-                        '/bank?offset=' +
-                        bank.Previous +
-                        (has(bank.Reviewed) ? '&status=reviewed' : '')
-                      }
+                      href={listURL(bank.Reviewed, bank.Previous)}
                     >
                       Trang trước
                     </ActionLink>
@@ -104,11 +120,7 @@ export function BankScreen({ page }: { page: PageData }) {
                   <>
                     <ActionLink
                       className="button secondary"
-                      href={
-                        '/bank?offset=' +
-                        bank.Next +
-                        (has(bank.Reviewed) ? '&status=reviewed' : '')
-                      }
+                      href={listURL(bank.Reviewed, bank.Next)}
                     >
                       Trang sau
                     </ActionLink>

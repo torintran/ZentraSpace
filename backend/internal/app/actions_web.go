@@ -214,6 +214,9 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			}
 			next = "/rooms/" + id + "?saved=fee&period=" + period + "#room-fees"
 		case "billing-settings":
+			if siteID := value("site"); b.hasSite(siteID) {
+				next += "&site=" + url.QueryEscape(siteID)
+			}
 			fee, err := number(r, "commonFee", 0, 100000000)
 			if err != nil {
 				return err
@@ -232,12 +235,12 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if err := b.saveSiteReading(SiteMeterReading{SiteID: id, Period: period, ElectricMeter: value("electricMeter"), WaterMeter: value("waterMeter"), ElectricBefore: eb, ElectricAfter: ea, WaterBefore: wb, WaterAfter: wa}, value("revision")); err != nil {
 				return inputError{err}
 			}
-			next = "/?tab=meters&period=" + period + "&saved=1&meterSite=" + url.QueryEscape(id) + "#site-meter-" + id
+			next = siteMeterReturn(period, id, value("site"))
 		case "site-meter-approve":
 			if err := b.approveSiteMeters(id, period, value("revision"), s.username, value("note"), time.Now()); err != nil {
 				return inputError{err}
 			}
-			next = "/?tab=meters&period=" + period + "&saved=1&meterSite=" + url.QueryEscape(id) + "#site-meter-" + id
+			next = siteMeterReturn(period, id, value("site"))
 		case "lease":
 			terms := LeaseTerms{RoomID: id, Effective: value("effective"), Tenant: value("tenant"),
 				Phone: value("phone"), SignedOn: value("signedOn"), StartOn: value("startOn"),
@@ -401,6 +404,9 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 			if value("filter") == "missing" {
 				next += "&filter=missing"
 			}
+			if siteID := value("site"); s.role == "owner" && b.roomBelongsToSite(id, siteID) && siteID != "" {
+				next += "&site=" + url.QueryEscape(siteID)
+			}
 			e, e1 := number(r, "electric", 0, 999999)
 			v, e2 := number(r, "water", 0, 999999)
 			if e1 != nil || e2 != nil {
@@ -418,13 +424,33 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 				return inputError{err}
 			}
 		case "draft":
-			b.draft(period)
-			if value("filter") == "draft" || value("filter") == "due" || value("filter") == "credit" {
+			siteID := value("site")
+			if siteID != "" {
+				if !b.hasSite(siteID) {
+					return errMissing
+				}
+				next += "&site=" + url.QueryEscape(siteID)
+			}
+			b.draftForSite(period, siteID)
+			if validBillingFilter(value("filter")) {
 				next += "&filter=" + value("filter")
 			}
 		case "issue-batch":
 			if value("confirm") != "yes" {
 				return errInvalid
+			}
+			if siteID := value("site"); siteID != "" {
+				if !b.hasSite(siteID) {
+					return errMissing
+				}
+				for _, selection := range r.Form["selected"] {
+					invoiceID, _, _ := strings.Cut(selection, ":")
+					invoice := b.invoice(invoiceID)
+					if invoice == nil || !b.roomBelongsToSite(invoice.RoomID, siteID) {
+						return errInvalid
+					}
+				}
+				next += "&site=" + url.QueryEscape(siteID) + "&filter=draft"
 			}
 			if err := b.issueBatch(period, r.Form["selected"]); err != nil {
 				return inputError{err}
@@ -530,4 +556,12 @@ func (a *App) action(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, next, http.StatusSeeOther)
+}
+
+func siteMeterReturn(period, id, site string) string {
+	next := "/?tab=meters&period=" + period + "&saved=1&meterSite=" + url.QueryEscape(id)
+	if id == site {
+		next += "&site=" + url.QueryEscape(id)
+	}
+	return next + "#site-meter-" + id
 }

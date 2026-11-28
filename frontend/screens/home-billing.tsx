@@ -1,9 +1,12 @@
 import { Fragment } from 'react';
+import { RoomList } from './browser-controls';
+import { BatchPublish } from './batch-publish';
 import { Action, ActionLink, FieldInput, Panel, Status } from './components';
 import { has, itemKey, money } from './view';
 import type { PageData, Invoice } from './view';
 
 export function BillingPanel({ page }: { page: PageData }) {
+  const siteQuery = page.SelectedSite ? '&site=' + encodeURIComponent(page.SelectedSite) : '';
   const drafts = page.Filter === 'draft' ? (page.Invoices ?? []).filter((invoice) => !invoice.Issued) : [];
   return (
     <>
@@ -15,7 +18,7 @@ export function BillingPanel({ page }: { page: PageData }) {
             <p className="empty">
               Chờ duyệt công tơ tổng của{' '}
               {page.SiteMeterChecks.map((check) => check.SiteName).join(', ')}.{' '}
-              <a href={'/?tab=meters&period=' + page.Period + '#site-meters'}>
+              <a href={'/?tab=meters&period=' + page.Period + siteQuery + '#site-meters'}>
                 Xem chênh lệch
               </a>
             </p>
@@ -24,6 +27,7 @@ export function BillingPanel({ page }: { page: PageData }) {
             <form method="post" action="/action/draft">
               <input type="hidden" name="csrf" value={page.CSRF} />
               <input type="hidden" name="period" value={page.Period} />
+              {page.SelectedSite && <input type="hidden" name="site" value={page.SelectedSite} />}
               {has(page.Filter) ? (
                 <>
                   <input type="hidden" name="filter" value={page.Filter} />
@@ -33,38 +37,45 @@ export function BillingPanel({ page }: { page: PageData }) {
             </form>
             <ActionLink
               className="button secondary"
-              href={'/export?period=' + page.Period}
+              href={'/export?period=' + page.Period + siteQuery}
             >
               Xuất công nợ
             </ActionLink>
             <ActionLink className="button secondary" href={'/export?view=pending&period=' + page.Period}>
-              Xuất khoản nhận chờ đối soát
+              {page.SelectedSite ? 'Xuất khoản chờ đối soát (tất cả dãy)' : 'Xuất khoản nhận chờ đối soát'}
             </ActionLink>
           </div>
           <nav className="tabs" aria-label="Lọc bảng kê">
             <a
-              href={'/?tab=billing&period=' + page.Period}
+              href={'/?tab=billing&period=' + page.Period + siteQuery}
               className={!has(page.Filter) ? 'active' : undefined}
               aria-current={!has(page.Filter) ? 'page' : undefined}
             >
               Tất cả
             </a>
             <a
-              href={'/?tab=billing&period=' + page.Period + '&filter=draft'}
+              href={'/?tab=billing&period=' + page.Period + siteQuery + '&filter=draft'}
               className={page.Filter === 'draft' ? 'active' : undefined}
               aria-current={page.Filter === 'draft' ? 'page' : undefined}
             >
               Chờ phát hành
             </a>
             <a
-              href={'/?tab=billing&period=' + page.Period + '&filter=due'}
+              href={'/?tab=billing&period=' + page.Period + siteQuery + '&filter=due'}
               className={page.Filter === 'due' ? 'active' : undefined}
               aria-current={page.Filter === 'due' ? 'page' : undefined}
             >
               Còn phải thu
             </a>
             <a
-              href={'/?tab=billing&period=' + page.Period + '&filter=credit'}
+              href={'/?tab=billing&period=' + page.Period + siteQuery + '&filter=overdue'}
+              className={page.Filter === 'overdue' ? 'active' : undefined}
+              aria-current={page.Filter === 'overdue' ? 'page' : undefined}
+            >
+              Quá hạn
+            </a>
+            <a
+              href={'/?tab=billing&period=' + page.Period + siteQuery + '&filter=credit'}
               className={page.Filter === 'credit' ? 'active' : undefined}
               aria-current={page.Filter === 'credit' ? 'page' : undefined}
             >
@@ -74,48 +85,49 @@ export function BillingPanel({ page }: { page: PageData }) {
           {drafts.length > 0 && (
             <details>
               <summary>Phát hành nhiều bảng kê</summary>
-              <form method="post" action="/action/issue-batch" className="form batch-publish">
-                <input type="hidden" name="csrf" value={page.CSRF} />
-                <input type="hidden" name="period" value={page.Period} />
-                <p className="subtle">Chọn tối đa 100 bảng kê. Kiểm tra chi tiết từng phòng trước khi phát hành.</p>
-                {drafts.map((invoice) => (
-                  <label className="check" key={invoice.ID}>
-                    <input type="checkbox" name="selected" value={invoice.ID + ':' + invoice.Revision} />
-                    <span>{invoice.RoomName} · {money(invoice.Total)}</span>
-                  </label>
-                ))}
-                <label className="check"><input type="checkbox" name="confirm" value="yes" required /><span>Tôi đã kiểm tra các bảng kê đã chọn.</span></label>
-                <button>Phát hành bảng kê đã chọn</button>
-              </form>
+              <BatchPublish drafts={drafts.map(({ID, Revision, RoomName, Total}) => ({ID, Revision, RoomName, Total}))}
+                csrf={page.CSRF} period={page.Period} site={page.SelectedSite} />
             </details>
           )}
           {has(page.Invoices) ? (
-            page.Invoices.map((invoice, index) => (
-              <Fragment key={itemKey(invoice, index)}>
-                <article className="list-row">
-                  <div>
-                    <strong>{invoice.RoomName}</strong>
-                    <p>
-                      {!has(invoice.Issued) ? (
-                        <>Bản nháp</>
-                      ) : has(invoice.Credit) ? (
-                        <>Có tiền thu dư</>
-                      ) : has(invoice.Remaining) ? (
-                        <>Còn phải thu</>
-                      ) : (
-                        <>Đã thu đủ</>
-                      )}
-                    </p>
-                  </div>
-                  <ActionLink
-                    className="button secondary"
-                    href={'/invoice/' + invoice.ID}
-                  >
-                    Xem bảng kê
-                  </ActionLink>
-                </article>
-              </Fragment>
-            ))
+            <RoomList
+              label="Tìm theo mã phòng hoặc tên người thuê"
+              empty="Không tìm thấy bảng kê."
+              listClass="billing-results"
+              rooms={page.Invoices.map((invoice) => ({
+                id: invoice.ID,
+                name: [invoice.RoomName, invoice.LeaseTenant].filter(Boolean).join(' '),
+                row: (
+                  <article className="list-row">
+                    <div>
+                      <strong>{invoice.RoomName}</strong>
+                      {invoice.LeaseTenant && <p>{invoice.LeaseTenant}</p>}
+                      <p>
+                        {!has(invoice.Issued) ? (
+                          <>Bản nháp</>
+                        ) : has(invoice.Credit) ? (
+                          <><span>Có tiền thu dư</span> · {money(invoice.Credit)}</>
+                        ) : has(invoice.Remaining) ? (
+                          <>
+                            <span>{invoice.DueDate && invoice.DueDate < page.Today ? 'Quá hạn' : 'Còn phải thu'}</span> · {money(invoice.Remaining)}
+                          </>
+                        ) : (
+                          <>Đã thu đủ</>
+                        )}
+                      </p>
+                      {!invoice.Issued && <p>Tổng bảng kê {money(invoice.Total)}</p>}
+                      {invoice.DueDate && <p>Hạn thu <time dateTime={invoice.DueDate}>{invoice.DueDate.split('-').reverse().join('/')}</time></p>}
+                    </div>
+                    <ActionLink
+                      className="button secondary"
+                      href={'/invoice/' + invoice.ID}
+                    >
+                      Xem bảng kê
+                    </ActionLink>
+                  </article>
+                ),
+              }))}
+            />
           ) : (
             <>
               <div className="empty">
@@ -146,7 +158,7 @@ export function BillingPanel({ page }: { page: PageData }) {
               <p className="subtle">Thêm một phòng để bắt đầu kỳ thu.</p>
               <ActionLink
                 className="button secondary"
-                href={'/?tab=rooms&period=' + page.Period}
+                href={'/?tab=rooms&period=' + page.Period + siteQuery}
               >
                 Thêm phòng
               </ActionLink>
@@ -156,7 +168,7 @@ export function BillingPanel({ page }: { page: PageData }) {
           <details>
             <summary>Hạn thanh toán và phí chung</summary>
             <p className="subtle">
-              Áp dụng cho bảng kê nháp và bảng kê tạo sau trong kỳ {page.Period}
+              Áp dụng toàn bộ dãy cho bảng kê nháp và bảng kê tạo sau trong kỳ {page.Period}
               .
             </p>
             <form
@@ -166,6 +178,7 @@ export function BillingPanel({ page }: { page: PageData }) {
             >
               <input type="hidden" name="csrf" value={page.CSRF} />
               <input type="hidden" name="period" value={page.Period} />
+              {page.SelectedSite && <input type="hidden" name="site" value={page.SelectedSite} />}
               <label>
                 Hạn thanh toán
                 <FieldInput

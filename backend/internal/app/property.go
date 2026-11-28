@@ -31,6 +31,15 @@ func (b *Book) roomLabel(room Room) string {
 	return room.Name
 }
 
+func (b *Book) roomBelongsToSite(roomID, siteID string) bool {
+	room := b.room(roomID)
+	return room != nil && room.SiteID == siteID
+}
+
+func (b *Book) hasSite(id string) bool {
+	return slices.ContainsFunc(b.Sites, func(site Site) bool { return site.ID == id })
+}
+
 func (s Site) mapURL() string {
 	if parts := strings.Split(s.Coordinates, ","); len(parts) == 2 {
 		lat, lng := parts[0], parts[1]

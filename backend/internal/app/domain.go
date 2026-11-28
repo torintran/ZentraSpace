@@ -248,16 +248,22 @@ func calculate(r Room, reading Reading, id string) Invoice {
 }
 
 func (b *Book) draft(period string) int {
+	return b.draftForSite(period, "")
+}
+
+func (b *Book) draftForSite(period, siteID string) int {
 	if _, err := time.Parse("2006-01", period); err != nil {
 		return 0
 	}
 	n := 0
 	hold := make(map[string]bool)
 	for _, site := range b.Sites {
-		hold[site.ID] = b.siteMeterHold(site.ID, period)
+		if siteID == "" || site.ID == siteID {
+			hold[site.ID] = b.siteMeterHold(site.ID, period)
+		}
 	}
 	for _, r := range b.Rooms {
-		if hold[r.SiteID] || !b.leaseAt(r, period).ActiveAt(period) {
+		if (siteID != "" && r.SiteID != siteID) || hold[r.SiteID] || !b.leaseAt(r, period).ActiveAt(period) {
 			continue
 		}
 		reading := b.reading(r.ID, period)

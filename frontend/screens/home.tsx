@@ -1,6 +1,6 @@
-import { Action, FieldInput } from './components';
+import { Action, FieldInput, FieldSelect } from './components';
 import { has } from './view';
-import type { PageData, Invoice } from './view';
+import type { PageData } from './view';
 
 import { DashboardPanel } from './home-dashboard';
 import { RoomsPanel } from './home-rooms';
@@ -22,6 +22,7 @@ const workspace = {
 export function HomeScreen({ page }: { page: PageData }) {
   const { label, Panel } =
     workspace[page.Tab as keyof typeof workspace] ?? workspace.dashboard;
+  const sites = page.Tab === 'meters' || page.Tab === 'billing' ? page.Sites ?? [] : [];
   return (
     <>
       <div className="page-title">
@@ -32,7 +33,15 @@ export function HomeScreen({ page }: { page: PageData }) {
         {page.Tab !== 'settings' && (
           <form method="get" action="/" className="period">
             <input type="hidden" name="tab" value={page.Tab} />
-            {page.SelectedSite && (
+            {sites.length > 0 ? (
+              <label>
+                Dãy trọ
+                <FieldSelect name="site" aria-label="Dãy trọ" defaultValue={page.SelectedSite} key={page.SelectedSite}>
+                  <option value="">Tất cả dãy và phòng lẻ</option>
+                  {sites.map((site) => <option key={site.ID} value={site.ID}>{site.Name}</option>)}
+                </FieldSelect>
+              </label>
+            ) : page.SelectedSite && (
               <input type="hidden" name="site" value={page.SelectedSite} />
             )}
             {page.ShowSiteDetails && (

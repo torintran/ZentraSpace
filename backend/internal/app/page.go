@@ -2,14 +2,16 @@ package app
 
 type RoomView struct {
 	Room
-	Done       bool
-	Lease      LeaseTerms
-	HasLease   bool
-	Renewed    bool
-	Handover   bool
-	Adjustment MeterAdjustment
-	People     int
-	HasPhoto   bool
+	Done                            bool
+	Lease                           LeaseTerms
+	HasLease                        bool
+	Renewed                         bool
+	Handover                        bool
+	Adjustment                      MeterAdjustment
+	People                          int
+	HasPhoto                        bool
+	MeterLocked, OpeningUnavailable bool
+	ElectricOpening, WaterOpening   int64
 }
 type Page struct {
 	MeterStaffNamePrefix                                                      string

@@ -76,6 +76,7 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 	}
 	period := periodOf(r.URL.Query().Get("period"))
 	pending := r.URL.Query().Get("view") == "pending"
+	siteID := r.URL.Query().Get("site")
 	filename := "cong-no-" + period + ".csv"
 	var rows = [][]string{{"Phòng", "Kỳ", "Tổng bảng kê (VND)", "Đã tất toán ròng (VND)", "Còn thiếu (VND)", "Thu dư (VND)", "Điều chỉnh giảm (VND)", "Phải thu sau điều chỉnh (VND)", "Tiền dư đã chuyển (VND)", "Tiền dư có thể chuyển (VND)"}}
 	err := a.store.book(r.Context(), s.organization, false, func(b *Book) error {
@@ -94,8 +95,11 @@ func (a *App) export(w http.ResponseWriter, r *http.Request) {
 			}
 			return nil
 		}
+		if siteID != "" && !b.hasSite(siteID) {
+			return errMissing
+		}
 		for _, i := range b.Invoices {
-			if i.Issued && i.Period == period {
+			if i.Issued && i.Period == period && (siteID == "" || b.roomBelongsToSite(i.RoomID, siteID)) {
 				c, reduced := i.totals()
 				rows = append(rows, []string{plainCSV(i.RoomName), i.Period, strconv.FormatInt(i.Total, 10), strconv.FormatInt(c, 10),
 					strconv.FormatInt(i.Remaining(), 10), strconv.FormatInt(i.Credit(), 10), strconv.FormatInt(reduced, 10), strconv.FormatInt(i.Total-reduced, 10), strconv.FormatInt(i.transferredCredit(), 10), strconv.FormatInt(i.transferableCredit(), 10)})

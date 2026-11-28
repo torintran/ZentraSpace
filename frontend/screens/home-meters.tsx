@@ -1,11 +1,12 @@
-import { Fragment } from 'react';
 import { Action, FieldInput, Panel, Status } from './components';
-import { has, itemKey } from './view';
-import type { PageData, Invoice } from './view';
+import { RoomList } from './browser-controls';
+import { has } from './view';
+import type { PageData } from './view';
 
 import { Check, Gauge } from 'lucide-react';
 import { SiteMeters } from './site-meters';
 export function MetersPanel({ page }: { page: PageData }) {
+  const siteQuery = page.SelectedSite ? '&site=' + encodeURIComponent(page.SelectedSite) : '';
   return (
     <>
       <Panel className="card" as="section">
@@ -20,14 +21,14 @@ export function MetersPanel({ page }: { page: PageData }) {
         )}
         <nav className="tabs" aria-label="Lọc theo chỉ số">
           <a
-            href={'/?tab=meters&period=' + page.Period}
+            href={'/?tab=meters&period=' + page.Period + siteQuery}
             className={!has(page.Filter) ? 'active' : undefined}
             aria-current={!has(page.Filter) ? 'page' : undefined}
           >
             Tất cả
           </a>
           <a
-            href={'/?tab=meters&period=' + page.Period + '&filter=missing'}
+            href={'/?tab=meters&period=' + page.Period + siteQuery + '&filter=missing'}
             className={page.Filter === 'missing' ? 'active' : undefined}
             aria-current={page.Filter === 'missing' ? 'page' : undefined}
           >
@@ -35,9 +36,18 @@ export function MetersPanel({ page }: { page: PageData }) {
           </a>
         </nav>
         {has(page.Rooms) ? (
-          page.Rooms.map((room, index) => (
-            <Fragment key={itemKey(room, index)}>
-              {has(!has(room.Handover) || has(room.Done)) ? (
+          <RoomList listClass="meter-results" preserveInputs rooms={page.Rooms.map((room) => ({
+            id: room.ID,
+            name: room.Name,
+            row: <>
+              {room.OpeningUnavailable ? (
+                <div className="list-row">
+                  <div>
+                    <strong>{room.Name}</strong>
+                    <p>Chờ phát hành bảng kê kỳ trước để có chỉ số đầu kỳ.</p>
+                  </div>
+                </div>
+              ) : has(!has(room.Handover) || has(room.Done)) ? (
                 <>
                   <form
                     className="meter-row"
@@ -46,6 +56,7 @@ export function MetersPanel({ page }: { page: PageData }) {
                   >
                     <input type="hidden" name="csrf" value={page.CSRF} />
                     <input type="hidden" name="period" value={page.Period} />
+                    {page.SelectedSite && <input type="hidden" name="site" value={page.SelectedSite} />}
                     <input type="hidden" name="id" value={room.ID} />
                     {has(page.Filter) ? (
                       <>
@@ -58,7 +69,9 @@ export function MetersPanel({ page }: { page: PageData }) {
                     ) : null}
                     <div>
                       <strong>{room.Name}</strong>{' '}
-                      {has(room.Done) ? (
+                      {room.MeterLocked ? (
+                        <Status className="badge good">Đã chốt</Status>
+                      ) : has(room.Done) ? (
                         <>
                           <Status className="badge good">Đã lưu</Status>
                         </>
@@ -69,34 +82,36 @@ export function MetersPanel({ page }: { page: PageData }) {
                       )}
                     </div>
                     <label>
-                      Điện (kWh)
+                      Điện cuối kỳ (kWh)
                       <FieldInput
                         type="number"
                         name="electric"
                         inputMode="numeric"
                         min="0"
                         max="999999"
-                        placeholder={room.Electric}
+                        readOnly={room.MeterLocked}
                         required
                         defaultValue={has(room.Done) ? room.Electric : ''}
                       />
+                      <small>Đầu kỳ {room.ElectricOpening.toLocaleString('vi-VN')} kWh</small>
                     </label>
                     <label>
-                      Nước (m³)
+                      Nước cuối kỳ (m³)
                       <FieldInput
                         type="number"
                         name="water"
                         inputMode="numeric"
                         min="0"
                         max="999999"
-                        placeholder={room.Water}
+                        readOnly={room.MeterLocked}
                         required
                         defaultValue={has(room.Done) ? room.Water : ''}
                       />
+                      <small>Đầu kỳ {room.WaterOpening.toLocaleString('vi-VN')} m³</small>
                     </label>
-                    <Action leftSection={<Check size={18} aria-hidden />}>
-                      Lưu chỉ số
-                    </Action>
+                    {!room.MeterLocked && (
+                      <Action leftSection={<Check size={18} aria-hidden />}>Lưu chỉ số</Action>
+                    )}
                   </form>
                 </>
               ) : (
@@ -109,7 +124,7 @@ export function MetersPanel({ page }: { page: PageData }) {
                   </div>
                 </>
               )}
-              {page.Role === 'owner' ? (
+              {page.Role === 'owner' && !room.MeterLocked && !room.OpeningUnavailable ? (
                 <>
                   <details
                     className="meter-special"
@@ -133,6 +148,7 @@ export function MetersPanel({ page }: { page: PageData }) {
                     >
                       <input type="hidden" name="csrf" value={page.CSRF} />
                       <input type="hidden" name="period" value={page.Period} />
+                      {page.SelectedSite && <input type="hidden" name="site" value={page.SelectedSite} />}
                       <input type="hidden" name="id" value={room.ID} />
                       {has(page.Filter) ? (
                         <>
@@ -324,8 +340,8 @@ export function MetersPanel({ page }: { page: PageData }) {
                   </details>
                 </>
               ) : null}
-            </Fragment>
-          ))
+            </>,
+          }))} />
         ) : (
           <>
             <p className="subtle">

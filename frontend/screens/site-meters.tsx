@@ -67,6 +67,7 @@ export function SiteMeters({ page }: { page: PageData }) {
             >
               <input type="hidden" name="csrf" value={page.CSRF} />
               <input type="hidden" name="period" value={page.Period} />
+              {page.SelectedSite && <input type="hidden" name="site" value={page.SelectedSite} />}
               <input type="hidden" name="id" value={check.SiteID} />
               <input type="hidden" name="revision" value={check.Revision} />
               <label>
@@ -79,6 +80,7 @@ export function SiteMeters({ page }: { page: PageData }) {
           <form method="post" action="/action/site-meter-save" className="form">
             <input type="hidden" name="csrf" value={page.CSRF} />
             <input type="hidden" name="period" value={page.Period} />
+            {page.SelectedSite && <input type="hidden" name="site" value={page.SelectedSite} />}
             <input type="hidden" name="id" value={check.SiteID} />
             <input type="hidden" name="revision" value={check.Revision} />
             {(['Electric', 'Water'] as const).map((kind) => {

@@ -1,11 +1,18 @@
-import { Fragment } from 'react';
+'use client';
+
+import { Fragment, useState } from 'react';
 import { FieldSelect, Action, ActionLink, Panel } from './components';
+import { InvoicePicker } from './browser-controls';
 import { clock, has, itemKey, money } from './view';
-import type { PageData, Invoice } from './view';
+import type { PageData } from './view';
 
 export function BankReviewScreen({ page }: { page: PageData }) {
   const review = page.BankReview;
+  const [choice, setChoice] = useState(review?.Selected?.ID || '');
   if (!review) return null;
+  const balanceAfterReceipt = review.Selected
+    ? review.Selected.Remaining - review.Selected.Credit - review.Transfer.Amount
+    : 0;
   return (
     <>
       <a className="back" href="/bank">
@@ -53,29 +60,13 @@ export function BankReviewScreen({ page }: { page: PageData }) {
               action={'/bank/review/' + review.Transfer.ID}
               className="form"
             >
-              <label>
-                Bảng kê đã phát hành
-                <FieldSelect
-                  name="invoice"
-                  required
-                  defaultValue={review.Selected?.ID || ''}
-                >
-                  <option value="">Chọn phòng và kỳ</option>
-                  {has(review.Invoices)
-                    ? review.Invoices.map((invoice, index) => (
-                        <Fragment key={itemKey(invoice, index)}>
-                          <option value={invoice.ID}>
-                            {invoice.RoomName} · {invoice.Period} · còn{' '}
-                            {money(invoice.Remaining)}
-                          </option>
-                        </Fragment>
-                      ))
-                    : null}
-                </FieldSelect>
-              </label>
+              <InvoicePicker invoices={review.Invoices ?? []} choice={choice} onChoice={setChoice} />
               <Action className="secondary">Kiểm tra bảng kê</Action>
             </form>
-            {has(review.Selected) ? (
+            {choice !== (review.Selected?.ID || '') && (
+              <p role="status">Bấm Kiểm tra bảng kê để xem lại số tiền trước khi đối soát.</p>
+            )}
+            {review.Selected && review.Selected.ID === choice ? (
               <>
                 <hr />
                 <p>
@@ -83,14 +74,13 @@ export function BankReviewScreen({ page }: { page: PageData }) {
                   {review.Selected.Period} · Còn{' '}
                   {money(review.Selected.Remaining)}
                 </p>
-                {review.Transfer.Amount > review.Selected.Remaining ? (
-                  <>
-                    <p className="notice">
-                      Nếu ghi khoản thu mới, phần vượt công nợ sẽ được ghi nhận
-                      là thu dư.
-                    </p>
-                  </>
-                ) : null}
+                {review.Selected.LeaseTenant && <p>Người thuê {review.Selected.LeaseTenant}</p>}
+                {review.Suggested && review.Suggested.ID !== review.Selected.ID && (
+                  <p className="notice">Bảng kê đang chọn khác phòng hoặc kỳ gợi ý từ nội dung chuyển khoản.</p>
+                )}
+                <p className={balanceAfterReceipt < 0 ? 'notice' : 'subtle'}>
+                  Nếu ghi khoản thu mới, {balanceAfterReceipt < 0 ? 'tổng tiền dư' : 'còn phải thu'} {money(Math.abs(balanceAfterReceipt))}.
+                </p>
                 <form
                   method="post"
                   action={'/bank/approve/' + review.Transfer.ID}

@@ -20,10 +20,13 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 	}
 	period := periodOf(r.URL.Query().Get("period"))
 	filter := r.URL.Query().Get("filter")
-	if (tab != "meters" || filter != "missing") && (tab != "billing" || (filter != "draft" && filter != "due" && filter != "credit")) {
+	if (tab != "meters" || filter != "missing") && (tab != "billing" || !validBillingFilter(filter)) {
 		filter = ""
 	}
 	p := Page{Screen: "home", Role: s.role, Tab: tab, Period: period, Filter: filter, CSRF: hash(id + ":csrf")}
+	if tab == "billing" {
+		p.Today = time.Now().In(vietnam).Format(time.DateOnly)
+	}
 	if tab == "meters" && s.role == "owner" {
 		p.SiteMeterFocus = r.URL.Query().Get("meterSite")
 	}
@@ -62,7 +65,7 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.RoomForm = tab == "rooms" && r.URL.Query().Get("add") == "1"
-	if tab == "rooms" || tab == "sites" {
+	if tab == "rooms" || tab == "sites" || (s.role == "owner" && (tab == "meters" || tab == "billing")) {
 		p.SelectedSite = r.URL.Query().Get("site")
 	}
 	p.EditSiteLocation = tab == "sites" && r.URL.Query().Get("location") == "edit"
@@ -92,7 +95,14 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			p.BillingSettings = b.Billing[period]
 		}
 		if s.role == "owner" && (tab == "meters" || tab == "billing") {
+			p.Sites = b.siteViews(period)
+			if p.SelectedSite != "" && !b.hasSite(p.SelectedSite) {
+				return errMissing
+			}
 			for _, site := range b.Sites {
+				if p.SelectedSite != "" && site.ID != p.SelectedSite {
+					continue
+				}
 				check := b.checkSiteMeters(site, period)
 				if tab == "meters" || check.NeedsReview {
 					p.SiteMeterChecks = append(p.SiteMeterChecks, check)
@@ -117,11 +127,19 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 			}
 			return nil
 		}
+		lockedMeters := make(map[string]bool)
+		if tab == "meters" {
+			for _, invoice := range b.Invoices {
+				if invoice.Period == period && invoice.Issued {
+					lockedMeters[invoice.RoomID] = true
+				}
+			}
+		}
 		for _, room := range b.Rooms {
 			if meter != nil && !slices.Contains(meter.SiteIDs, room.SiteID) {
 				continue
 			}
-			if tab == "rooms" && p.SelectedSite != "" && room.SiteID != p.SelectedSite {
+			if p.SelectedSite != "" && room.SiteID != p.SelectedSite {
 				continue
 			}
 			lease := b.leaseAt(room, period)
@@ -151,22 +169,30 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 				view.People = len(b.roomResidents(room, period))
 			}
 			if tab == "meters" {
+				view.MeterLocked = lockedMeters[room.ID]
 				if reading != nil {
 					view.Electric, view.Water = reading.ElectricAfter, reading.WaterAfter
+					view.ElectricOpening, view.WaterOpening = reading.ElectricBefore, reading.WaterBefore
 					view.Handover = reading.Adjustment.Handover
 					if s.role == "owner" {
 						view.Adjustment = reading.Adjustment
 					}
 				} else if opening, err := b.meterOpening(room, period); err == nil {
-					view.Electric, view.Water, view.Handover = opening.Electric, opening.Water, opening.Handover
+					view.ElectricOpening, view.WaterOpening, view.Handover = opening.Electric, opening.Water, opening.Handover
+				} else {
+					view.OpeningUnavailable = true
 				}
 			}
 			p.Rooms = append(p.Rooms, view)
 		}
 		if s.role == "owner" {
 			for _, i := range b.Invoices {
+				if p.SelectedSite != "" && !b.roomBelongsToSite(i.RoomID, p.SelectedSite) {
+					continue
+				}
 				if i.Period == period && (filter != "draft" || !i.Issued) &&
 					(filter != "due" || (i.Issued && i.Remaining() > 0)) &&
+					(filter != "overdue" || (i.Issued && i.Remaining() > 0 && i.DueDate != "" && i.DueDate < p.Today)) &&
 					(filter != "credit" || (i.Issued && i.transferableCredit() > 0)) {
 					p.Invoices = append(p.Invoices, i)
 				}
@@ -188,4 +214,12 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.page(w, r, p)
+}
+
+func validBillingFilter(filter string) bool {
+	switch filter {
+	case "draft", "due", "overdue", "credit":
+		return true
+	}
+	return false
 }
